@@ -1,5 +1,5 @@
 from decimal import Decimal
-from enum    import StrEnum, auto
+from enum    import StrEnum
 
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy import (
@@ -30,8 +30,8 @@ class User(BaseModel):
     # gain is negligible for the expected load, and strings keep
     # the code and DB introspection cleaner.
     class Role(StrEnum):
-        USER = auto()
-        ADMIN = auto()
+        USER = "user"
+        ADMIN = "admin"
 
     # search user by email on login (auth)
     # unique is index already (UNIQUE INDEX in sql)
