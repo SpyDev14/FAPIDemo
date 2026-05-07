@@ -1,5 +1,6 @@
-from decimal import Decimal
-from enum    import StrEnum
+from datetime import datetime
+from decimal  import Decimal
+from enum     import StrEnum
 
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy import (
@@ -102,4 +103,4 @@ class Payment(BaseModel):
     )
     account: Mapped[Account] = relationship(Account, back_populates='payments')
     transaction_id: Mapped[str] = mapped_column(String(36), unique=True)
-    created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
