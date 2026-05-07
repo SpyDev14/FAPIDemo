@@ -38,7 +38,7 @@ class User(BaseModel):
     # unique is index already (UNIQUE INDEX in sql)
     email: Mapped[str] = mapped_column(String(255), unique=True)
     hashed_password: Mapped[str] = mapped_column(String(255)) # TODO: Change VARCHAR size
-    full_name: Mapped[str] = mapped_column(String(127))
+    full_name: Mapped[str] = mapped_column(String(255))
 
     # I choose str enum instead bool flag because it's more
     # flexible for future extending without over-engineering
