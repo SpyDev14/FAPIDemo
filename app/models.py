@@ -3,7 +3,7 @@ from enum    import StrEnum, auto
 
 from sqlalchemy.orm import relationship, Mapped
 from sqlalchemy import (
-    Integer, String, Numeric, Enum, DateTime,
+    BigInteger, String, Numeric, Enum, DateTime,
     ForeignKey, UniqueConstraint, Column, func,
 )
 
@@ -19,7 +19,7 @@ class BaseModel(Base):
     __tablename__: str
     __table_args__: tuple | dict
 
-    id = Column(Integer, primary_key = True)
+    id = Column(BigInteger, primary_key = True)
 
 class User(BaseModel):
     __tablename__ = "users"
@@ -67,9 +67,9 @@ class Account(BaseModel):
         UniqueConstraint('user_id', 'number', name='unique_user_account_number'),
     )
 
-    # <- global unique id (from BaseModel) for local links: faster JOINs, simple work
-    user_id = Column(Integer, ForeignKey(User.id, ondelete=CASCADE), index=True, nullable=False)
-    number = Column(Integer, nullable=False) # number of user account. Unique for one user, not unique global.
+    user_id = Column(BigInteger, ForeignKey(User.id, ondelete=CASCADE), index=True, nullable=False)
+    # i don't known what number type uses in other payment system, so i use BIGINT also
+    number = Column(BigInteger, nullable=False) # number of user account. Unique for one user, not unique global.
     user: Mapped[User] = relationship(User, back_populates="accounts")
     balance = Column(Money, default=Decimal("0.00"), nullable=False)
 
@@ -81,7 +81,7 @@ class Payment(BaseModel):
     __tablename__ = "payments"
 
     amount = Column(Money, nullable=False)
-    account_id = Column(Integer, ForeignKey(Account.id, ondelete=CASCADE), index=True, nullable=False)
+    account_id = Column(BigInteger, ForeignKey(Account.id, ondelete=CASCADE), index=True, nullable=False)
     account: Mapped[Account] = relationship(Account, back_populates="payments")
     transaction_id = Column(String(36), unique=True, nullable=False)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
