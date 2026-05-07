@@ -16,7 +16,7 @@ from app.core.database                 import Base
 class BaseModel(Base):
     __abstract__ = True
 
-    # Just for annotations in subclasses
+    # Just for IDE insert suggestions in subclasses
     __tablename__: str
     __table_args__: tuple | dict
 
@@ -62,16 +62,19 @@ class User(BaseModel):
     def is_admin(self) -> bool:
         return self.role == User.Role.ADMIN
 
-    # If we also have other roles (like "Manager"), I would add here
+    # If we also have other roles (like "Manager"), i would add here
     # properties / methods for check permissions (`can_create_users`,
     # `can_view_users`, `can_edit_user(User)`, etc.) or `has_permission`
-    # and `Permission` enum (user.has_permission(Perms.CAN_VIEW_USERS))
-    # If more differentiated roles are needed & permissions, I will create special
-    # models for it. This is not necessary now and would be over-engineering.
+    # and `Permission` enum (user.has_permission(Perm.CAN_VIEW_USERS))
+    # If more differentiated roles are needed & permissions, i will create
+    # special models for it (if needs dynamically roles). This is not
+    # necessary now and will be over-engineering.
 
-# i use Numeric (Decimal) instead of float because float has inaccuracies in
-# rounding, that absolutely not allowed in finances (i'll be detailed)
-Money = Numeric(15, 2)
+# I use Numeric (Decimal) instead of float because float has inaccuracies in
+# rounding, what absolutely not allowed in finances (common knowledge, but i
+# decided mention it anyway)
+# I know about type_annotation_map and their abilities, but now it be over-engineering
+Money = Numeric(15, 2) # (now i chosen simple alias so that there are no duplicate)
 class Account(BaseModel):
     '''`User` bank account ("Счёт")'''
     __tablename__ = 'accounts'
@@ -79,13 +82,15 @@ class Account(BaseModel):
         UniqueConstraint('user_id', 'number', name='unique_user_account_number'),
     )
 
-    # <- global unique local id (from BaseModel) for local staff: faster JOINs, simple work with it
-    # For API used user_id + number (user_id, account_id, like `127, 2`)
+    # <- unique, global id for our app (local) (nested from BaseModel)
+    #    Used for local staff: faster JOINs, simple FK definitions, just simple work with it and other.
+    # For API used user_id + number (as user_id, account_id, like `12627, 1`)
     user_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey(User.id, ondelete=CASCADE), index=True,
     )
-    # i don't known what number type uses in other payment system, so i use BIGINT also
-    # number of user account. Unique for one user, not unique at global.
+    # i don't known what numeric-type uses in other payment system for it, so
+    # i use BIGINT like for other ids. It is number of user account.
+    # Unique for one user, not unique at global (in compare with all other records in our DB).
     number: Mapped[int] = mapped_column(BigInteger)
     user: Mapped[User] = relationship(User, back_populates='accounts')
     balance: Mapped[Decimal] = mapped_column(Money, default=Decimal('0.00'))
