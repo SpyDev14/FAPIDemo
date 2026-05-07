@@ -1,10 +1,10 @@
 from decimal import Decimal
 from enum    import StrEnum, auto
 
-from sqlalchemy.orm import relationship, Mapped
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy import (
     BigInteger, String, Numeric, Enum, DateTime,
-    ForeignKey, UniqueConstraint, Column, func,
+    ForeignKey, UniqueConstraint, func,
 )
 
 from app.utils.db.relationship_cascade import ALL_AND_DELETE_ORPHAN
@@ -19,7 +19,8 @@ class BaseModel(Base):
     __tablename__: str
     __table_args__: tuple | dict
 
-    id = Column(BigInteger, primary_key = True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+
 
 class User(BaseModel):
     __tablename__ = "users"
@@ -30,15 +31,17 @@ class User(BaseModel):
 
     # search user by email on login (auth)
     # unique is index already (UNIQUE INDEX in sql)
-    email = Column(String, unique=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
-    full_name = Column(String, nullable=False)
+    email: Mapped[str] = mapped_column(String(255), unique=True)
+    hashed_password: Mapped[str] = mapped_column(String(255)) # TODO: Change VARCHAR size
+    full_name: Mapped[str] = mapped_column(String(127))
 
     # i choose str enum instead bool flag 'cause it's more
     # flexible for future extending without overengineering
     # (just string instead bool in db).
-    # DO NOT USE DIRECTRY FOR ROLE CHECKING!!!
-    role = Column(Enum(Role), default=Role.USER, nullable=False)
+    # DO NOT USE DIRECTLY FOR ROLE CHECKING!!! Any role checks
+    # should go through User instance or something else, but NOT
+    # through `.role` directly!
+    role: Mapped[Role] = mapped_column(Enum(Role), default=Role.USER)
 
     accounts: Mapped[list["Account"]] = relationship(
         "Account", back_populates="user", cascade=ALL_AND_DELETE_ORPHAN
@@ -56,7 +59,9 @@ class User(BaseModel):
     # it's more flexible for potential changes in the future, and more
     # readable.
     @property
-    def is_admin(self): return self.role == User.Role.ADMIN
+    def is_admin(self) -> bool:
+        return self.role == User.Role.ADMIN
+
 
 # i use Numeric (Decimal) 'cause float has inaccuracies in
 # rounding, that absolutelly not allowed in finances (i'll be detailed)
@@ -70,21 +75,26 @@ class Account(BaseModel):
 
     # <- global unique local id (from BaseModel) for local staff: faster JOINs, simple work with it
     # For API used user_id + number (user_id, account_id, like `127, 2`)
-    user_id = Column(BigInteger, ForeignKey(User.id, ondelete=CASCADE), index=True, nullable=False)
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey(User.id, ondelete=CASCADE), index=True,
+    )
     # i don't known what number type uses in other payment system, so i use BIGINT also
-    number = Column(BigInteger, nullable=False) # number of user account. Unique for one user, not unique global.
+    # number of user account. Unique for one user, not unique at global.
+    number: Mapped[int] = mapped_column(BigInteger)
     user: Mapped[User] = relationship(User, back_populates="accounts")
-    balance = Column(Money, default=Decimal("0.00"), nullable=False)
+    balance: Mapped[Decimal] = mapped_column(Money, default=Decimal("0.00"))
 
     payments: Mapped[list["Payment"]] = relationship(
-        "Payment", back_populates="account", cascade=ALL_AND_DELETE_ORPHAN
+        "Payment", back_populates="account", cascade=ALL_AND_DELETE_ORPHAN,
     )
 
 class Payment(BaseModel):
     __tablename__ = "payments"
 
-    amount = Column(Money, nullable=False)
-    account_id = Column(BigInteger, ForeignKey(Account.id, ondelete=CASCADE), index=True, nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Money)
+    account_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey(Account.id, ondelete=CASCADE), index=True,
+    )
     account: Mapped[Account] = relationship(Account, back_populates="payments")
-    transaction_id = Column(String(36), unique=True, nullable=False)
-    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    transaction_id: Mapped[str] = mapped_column(String(36), unique=True)
+    created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
