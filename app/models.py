@@ -74,7 +74,7 @@ class User(BaseModel):
 # rounding, what absolutely not allowed in finances (common knowledge, but i
 # decided mention it anyway)
 # I know about type_annotation_map and their abilities, but now it be over-engineering
-Money = Numeric(15, 2) # (now i chosen simple alias so that there are no duplicate)
+_Money = Numeric(15, 2) # (now i chosen simple alias so that there are no duplicate)
 class Account(BaseModel):
     '''`User` bank account ("Счёт")'''
     __tablename__ = 'accounts'
@@ -93,7 +93,7 @@ class Account(BaseModel):
     # Unique for one user, not unique at global (in compare with all other records in our DB).
     number: Mapped[int] = mapped_column(BigInteger)
     user: Mapped[User] = relationship(User, back_populates='accounts')
-    balance: Mapped[Decimal] = mapped_column(Money, default=Decimal('0.00'))
+    balance: Mapped[Decimal] = mapped_column(_Money, default=Decimal('0.00'))
 
     payments: Mapped[list['Payment']] = relationship(
         'Payment', back_populates='account', cascade=ALL_AND_DELETE_ORPHAN,
@@ -102,7 +102,7 @@ class Account(BaseModel):
 class Payment(BaseModel):
     __tablename__ = 'payments'
 
-    amount: Mapped[Decimal] = mapped_column(Money)
+    amount: Mapped[Decimal] = mapped_column(_Money)
     account_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey(Account.id, ondelete=CASCADE), index=True,
     )
