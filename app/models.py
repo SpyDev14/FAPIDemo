@@ -25,6 +25,10 @@ class BaseModel(Base):
 class User(BaseModel):
     __tablename__ = "users"
 
+    # I using strings for readability in logs and DB tools.
+    # int enums (SMALLINT) would be faster, but the performance
+    # gain is negligible for the expected load, and strings keep
+    # the code and DB introspection cleaner.
     class Role(StrEnum):
         USER = auto()
         ADMIN = auto()
@@ -35,26 +39,21 @@ class User(BaseModel):
     hashed_password: Mapped[str] = mapped_column(String(255)) # TODO: Change VARCHAR size
     full_name: Mapped[str] = mapped_column(String(127))
 
-    # i choose str enum instead bool flag 'cause it's more
-    # flexible for future extending without overengineering
+    # I choose str enum instead bool flag because it's more
+    # flexible for future extending without over-engineering
     # (just string instead bool in db).
-    # DO NOT USE DIRECTLY FOR ROLE CHECKING!!! Any role checks
-    # should go through User instance or something else, but NOT
-    # through `.role` directly!
+
+    # DO NOT USE DIRECTLY FOR ROLE CHECKING. Any role checks
+    # should go through User instance (like `user.is_admin`
+    # property) or something other for it (some new way), but
+    # NOT through `.role` directly!
     role: Mapped[Role] = mapped_column(Enum(Role), default=Role.USER)
 
     accounts: Mapped[list["Account"]] = relationship(
         "Account", back_populates="user", cascade=ALL_AND_DELETE_ORPHAN
     )
 
-    # If we also have other roles (like "Manager"), I would add
-    # here properties / methods for check permissions (`can_create_users`,
-    # `can_view_users`, `can_edit_user(User)`, etc.) or `has_permission`
-    # and `Permission` enum (user.has_permission(Perms.CAN_VIEW_USERS))
-    # If needs more diffirence roles & permissions, i will create special
-    # models for it. This is not necessary now and will be overengineering.
-
-    # I add this property for clearly check what is admin:
+    # I added this property for clearly check what is admin:
     # `if user.is_admin` instead of `if user.role == User.Role.ADMIN`.
     # it's more flexible for potential changes in the future, and more
     # readable.
@@ -62,9 +61,15 @@ class User(BaseModel):
     def is_admin(self) -> bool:
         return self.role == User.Role.ADMIN
 
+    # If we also have other roles (like "Manager"), I would add here
+    # properties / methods for check permissions (`can_create_users`,
+    # `can_view_users`, `can_edit_user(User)`, etc.) or `has_permission`
+    # and `Permission` enum (user.has_permission(Perms.CAN_VIEW_USERS))
+    # If more differentiated roles are needed & permissions, I will create special
+    # models for it. This is not necessary now and would be over-engineering.
 
-# i use Numeric (Decimal) 'cause float has inaccuracies in
-# rounding, that absolutelly not allowed in finances (i'll be detailed)
+# i use Numeric (Decimal) instead of float because float has inaccuracies in
+# rounding, that absolutely not allowed in finances (i'll be detailed)
 Money = Numeric(15, 2)
 class Account(BaseModel):
     """`User` bank account ("Счёт")"""
