@@ -22,8 +22,9 @@ class Settings(BaseSettings):
     @classmethod
     def _validate_secret_key(cls, value: str, info: ValidationInfo):
         debug = info.data['DEBUG']
-        if not debug and value in {cls.SECRET_KEY, 'SECRET_KEY'}:
-            raise ValueError('SECRET_KEY should be specified in production')
+        # cannot get access to cls.SECRET_KEY: AttributeError. It's pydantic magic
+        if not debug and value in {info.field_name, cls.model_fields[info.field_name].default}:
+            raise ValueError(f'{info.field_name} should be specified in production')
         return value
 
 settings = Settings()
