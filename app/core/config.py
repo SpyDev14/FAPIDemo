@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic          import field_validator, ValidationInfo
 
 class Settings(BaseSettings):
-    DEBUG: bool = False # sould be under SK 'cause SK validation depends on DEBUG value
+    DEBUG: bool = False # should be under SK because SK validation depends on DEBUG value
     SECRET_KEY: str = 'SECRET_KEY'
 
     ### [Database] ###
