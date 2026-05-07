@@ -79,7 +79,7 @@ class Account(BaseModel):
     '''`User` bank account ("Счёт")'''
     __tablename__ = 'accounts'
     __table_args__ = (
-        UniqueConstraint('user_id', 'number', name='unique_user_account_number'),
+        UniqueConstraint('user_id', 'number', name='uq_accounts_user_id_number'),
     )
 
     # <- unique, global id for our app (local) (nested from BaseModel)
