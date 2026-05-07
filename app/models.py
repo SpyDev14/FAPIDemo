@@ -23,15 +23,15 @@ class BaseModel(Base):
 
 
 class User(BaseModel):
-    __tablename__ = "users"
+    __tablename__ = 'users'
 
     # I using strings for readability in logs and DB tools.
     # int enums (SMALLINT) would be faster, but the performance
     # gain is negligible for the expected load, and strings keep
     # the code and DB introspection cleaner.
     class Role(StrEnum):
-        USER = "user"
-        ADMIN = "admin"
+        USER = 'user'
+        ADMIN = 'admin'
 
     # search user by email on login (auth)
     # unique is index already (UNIQUE INDEX in sql)
@@ -49,8 +49,8 @@ class User(BaseModel):
     # NOT through `.role` directly!
     role: Mapped[Role] = mapped_column(Enum(Role), default=Role.USER)
 
-    accounts: Mapped[list["Account"]] = relationship(
-        "Account", back_populates="user", cascade=ALL_AND_DELETE_ORPHAN
+    accounts: Mapped[list['Account']] = relationship(
+        'Account', back_populates='user', cascade=ALL_AND_DELETE_ORPHAN
     )
 
     # I added this property for clearly check what is admin:
@@ -72,8 +72,8 @@ class User(BaseModel):
 # rounding, that absolutely not allowed in finances (i'll be detailed)
 Money = Numeric(15, 2)
 class Account(BaseModel):
-    """`User` bank account ("Счёт")"""
-    __tablename__ = "accounts"
+    '''`User` bank account ("Счёт")'''
+    __tablename__ = 'accounts'
     __table_args__ = (
         UniqueConstraint('user_id', 'number', name='unique_user_account_number'),
     )
@@ -86,20 +86,20 @@ class Account(BaseModel):
     # i don't known what number type uses in other payment system, so i use BIGINT also
     # number of user account. Unique for one user, not unique at global.
     number: Mapped[int] = mapped_column(BigInteger)
-    user: Mapped[User] = relationship(User, back_populates="accounts")
-    balance: Mapped[Decimal] = mapped_column(Money, default=Decimal("0.00"))
+    user: Mapped[User] = relationship(User, back_populates='accounts')
+    balance: Mapped[Decimal] = mapped_column(Money, default=Decimal('0.00'))
 
-    payments: Mapped[list["Payment"]] = relationship(
-        "Payment", back_populates="account", cascade=ALL_AND_DELETE_ORPHAN,
+    payments: Mapped[list['Payment']] = relationship(
+        'Payment', back_populates='account', cascade=ALL_AND_DELETE_ORPHAN,
     )
 
 class Payment(BaseModel):
-    __tablename__ = "payments"
+    __tablename__ = 'payments'
 
     amount: Mapped[Decimal] = mapped_column(Money)
     account_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey(Account.id, ondelete=CASCADE), index=True,
     )
-    account: Mapped[Account] = relationship(Account, back_populates="payments")
+    account: Mapped[Account] = relationship(Account, back_populates='payments')
     transaction_id: Mapped[str] = mapped_column(String(36), unique=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
