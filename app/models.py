@@ -1,7 +1,7 @@
 from decimal import Decimal
 from enum    import StrEnum, auto
 
-from sqlalchemy.orm import relationship, declarative_base, Mapped
+from sqlalchemy.orm import relationship, Mapped
 from sqlalchemy import (
     Integer, String, Numeric, Enum, DateTime,
     ForeignKey, UniqueConstraint, Column, func,
@@ -9,9 +9,9 @@ from sqlalchemy import (
 
 from app.utils.db.relationship_cascade import ALL_AND_DELETE_ORPHAN
 from app.utils.db.fk_on_delete         import CASCADE
+from app.core.database                 import Base
 
 
-Base: type[type] = declarative_base()
 class BaseModel(Base):
     __abstract__ = True
 
