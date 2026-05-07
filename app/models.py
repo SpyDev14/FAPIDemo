@@ -37,6 +37,7 @@ class User(BaseModel):
     # i choose str enum instead bool flag 'cause it's more
     # flexible for future extending without overengineering
     # (just string instead bool in db).
+    # DO NOT USE DIRECTRY FOR ROLE CHECKING!!!
     role = Column(Enum(Role), default=Role.USER, nullable=False)
 
     accounts: Mapped[list["Account"]] = relationship(
@@ -58,7 +59,7 @@ class User(BaseModel):
     def is_admin(self): return self.role == User.Role.ADMIN
 
 # i use Numeric (Decimal) 'cause float has inaccuracies in
-# rounding, that absolutelly not allowed in finances (i will be detailed)
+# rounding, that absolutelly not allowed in finances (i'll be detailed)
 Money = Numeric(15, 2)
 class Account(BaseModel):
     """`User` bank account ("Счёт")"""
@@ -67,6 +68,8 @@ class Account(BaseModel):
         UniqueConstraint('user_id', 'number', name='unique_user_account_number'),
     )
 
+    # <- global unique local id (from BaseModel) for local staff: faster JOINs, simple work with it
+    # For API used user_id + number (user_id, account_id, like `127, 2`)
     user_id = Column(BigInteger, ForeignKey(User.id, ondelete=CASCADE), index=True, nullable=False)
     # i don't known what number type uses in other payment system, so i use BIGINT also
     number = Column(BigInteger, nullable=False) # number of user account. Unique for one user, not unique global.
