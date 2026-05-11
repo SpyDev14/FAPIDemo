@@ -1,10 +1,7 @@
-import asyncio
-
 from fastapi import FastAPI, Request
 import uvicorn
 
 from app.core.config import settings
-
 
 app = FastAPI(
     debug=settings.DEBUG,
