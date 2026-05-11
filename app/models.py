@@ -78,20 +78,12 @@ _Money = Numeric(15, 2) # (now i chosen simple alias so that there are no duplic
 class Account(BaseModel):
     '''`User` bank account ("Счёт")'''
     __tablename__ = 'accounts'
-    __table_args__ = (
-        UniqueConstraint('user_id', 'number', name='uq_accounts_user_id_number'),
-    )
 
-    # <- unique, global id for our app (local) (nested from BaseModel)
-    #    Used for local staff: faster JOINs, simple FK definitions, just simple work with it and other.
-    # For API used user_id + number (as user_id, account_id, like `12627, 1`)
     user_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey(User.id, ondelete=CASCADE), index=True,
     )
-    # i don't known what numeric-type uses in other payment system for it, so
-    # i use BIGINT like for other ids. It is number of user account.
-    # Unique for one user, not unique at global (in compare with all other records in our DB).
-    number: Mapped[int] = mapped_column(BigInteger)
+    # ID from external payment system. Used in webhook.
+    external_id: Mapped[int] = mapped_column(BigInteger, unique=True)
     user: Mapped[User] = relationship(User, back_populates='accounts')
     balance: Mapped[Decimal] = mapped_column(_Money, default=Decimal('0.00'))
 
