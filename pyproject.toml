@@ -9,4 +9,5 @@ dependencies = [
     "sqlalchemy[postgresql-asyncpg]>=2.0.49",
     "alembic>=1.18.4",
     "pwdlib[argon2]>=0.3.0",
+    "fastcrud>=0.21.0",
 ]
