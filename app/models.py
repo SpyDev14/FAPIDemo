@@ -20,27 +20,48 @@ class BaseModel(Base):
     __tablename__: str
     __table_args__: tuple | dict
 
+    # Я использую BigInt вместо Int потому, что лишние 4 байта на
+    # запись (+ 4 байта на FK) не сильно увеличивают занимаемое
+    # место, но это полностью исключает проблему переполнения ID,
+    # что исключает ситуацию, когда вам нужно срочно мигрировать
+    # весь проект на int64 с int32, как это было с телеграмм.
+    # Просто хорошая практика, экономия здесь даст микроскопическое
+    # преимущество, при потенциально огромных издержках на переход
+    # в случае роста проекта (команда телеграмм около года в срочном
+    # режиме переписывала всю свою инфраструктуру, чем также
+    # сломала старые клиенты (приложения для устройств) и многие
+    # телеграмм боты, которые пришлось обновлять своим разработчикам).
+    # Это тоже банальная деталь, но я решил её отметить, так как
+    # это важно. Это та причина, по которой я НЕ использую INTEGER для id.
+    # Макс. записей при int32 - 2 миллиарда (6 лет при 1 млн вставок в день)
+    # Макс. записей при int64 - 9 квинтиллионов (хватит на вечность)
+    # SQL не поддерживает unsigned int. Иначе кол-во можно было бы удвоить
+    # (отрицательные числа не используются для ID, по крайней мере обычно).
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
 
 class User(BaseModel):
     __tablename__ = 'users'
 
-    # I using strings for readability in logs and DB tools.
-    # int enums (SMALLINT) would be faster, but the performance
-    # gain is negligible for the expected load, and strings keep
-    # the code and DB introspection cleaner.
+    # Я использую строки вместо чисел для лучшей читаемости в логах и
+    # при использовании инструментов для работы с БД в обход ORM.
+    # INT enum-ы (напр. SMALLINT) для ролей были бы быстрее, но прирост
+    # производительности будет не существенен при ожидаемой нагрузке,
+    # при утрате читаемости (role = 1 читается в разы хуже, чем role =
+    # 'admin'). Сырые значения мы можем увидеть: при чтении логов,
+    # при написании сырых SQL запросов (оптимизации), при просмотре БД
+    # инструментами по типу PG Admin.
     class Role(StrEnum):
         USER = 'user'
         ADMIN = 'admin'
 
-    # search user by email on login (auth)
-    # unique is index already (UNIQUE INDEX in sql)
+    # NOTE: часто ищем по почте (напр. при логине (auth))
+    # (unique уже добавляет индекс (UNIQUE INDEX in sql))
     email: Mapped[str] = mapped_column(String(255), unique=True)
     hashed_password: Mapped[str] = mapped_column(String(255)) # TODO: Change VARCHAR size
     full_name: Mapped[str] = mapped_column(String(255))
 
-    # I choose str enum instead bool flag because it's more
+    # I choose enum instead bool flag because it's more
     # flexible for future extending without over-engineering
     # (just string instead bool in db).
 
@@ -100,4 +121,25 @@ class Payment(BaseModel):
     )
     account: Mapped[Account] = relationship(Account, back_populates='payments')
     transaction_id: Mapped[str] = mapped_column(String(36), unique=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # Normally we'd sort these records with newest first, but since
+    # the id increases with each new record, we sort by id descending
+    # instead of created_at — because I don't want to create an extra
+    # index (it wouldn't make sense here). So this field is used only
+    # for data storage.
+    # As we all know, indexes take up disk space and slow down UPDATE
+    # & INSERT, but in return they speed up any operations on that field
+    # (filtering, sorting, JOINs, etc.). Therefore every index must be
+    # justified and necessary; any field we frequently query against
+    # should be indexed.
+    # Обычно мы будем сортировать эти записи в порядке "сначала новые",
+    # но так как id увеличивается с каждой новой записью, сортировка
+    # будет вестись не по created_at, а по уменьшению id, так как я не
+    # хочу создавать лишний индекс (это не имеет смысла). Поэтому поле
+    # используется только для хранения данных.
+    # Всем известная информация: индексы занимают много места на диске,
+    # замедляют UPDATE & INSERT, взамен ускоряя все операции по полю
+    # (такие как фильтрация, сортировка, JOIN-ы и так далее). Поэтому
+    # каждый индекс должен быть оправдан и необходим, каждое поле по
+    # которому мы часто производим операции должно быть индексировано.
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),
+                                                 server_default=func.now())
