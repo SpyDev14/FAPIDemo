@@ -1,4 +1,4 @@
-from app.models import User
+from app.modules.user import User
 
 
 async def get_current_user() -> User:
