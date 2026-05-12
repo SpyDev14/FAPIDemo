@@ -5,7 +5,7 @@ from enum     import StrEnum
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy import (
     BigInteger, String, Numeric, Enum, DateTime,
-    ForeignKey, UniqueConstraint, func,
+    ForeignKey, func,
 )
 
 from app.utils.db.relationship_cascade import ALL_AND_DELETE_ORPHAN
