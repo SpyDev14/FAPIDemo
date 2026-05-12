@@ -18,8 +18,9 @@ class PaymentService(Protocol):
 # `class _payment_service` syntax equatable to `_payment_service = type(...)`
 # Used as object with assigned func-objects, not as class
 class _payment_service(PaymentService):
+    def __new__(*args): raise Exception
     async def process_external_payment(data: ProcessExternalPaymentData):
-        raise NotImplementedError()
+        raise NotImplementedError
 
 ### Deps ###
 def get_payment_service() -> PaymentService:
