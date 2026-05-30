@@ -8,9 +8,9 @@ from sqlalchemy import (
     ForeignKey, func,
 )
 
-from app.utils.db.relationship_cascade import ALL_AND_DELETE_ORPHAN
-from app.utils.db.fk_on_delete         import CASCADE
-from app.modules.base.models           import BaseModel
+from app.utils.orm.relationship_cascade import ALL_AND_DELETE_ORPHAN
+from app.utils.orm.fk_on_delete         import CASCADE
+from app.modules.base.models            import BaseModel
 
 
 class User(BaseModel):
