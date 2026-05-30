@@ -8,19 +8,24 @@ api_router = APIRouter(
 )
 api_router.include_router(v1_router)
 
-# $pagination = page_size,page
-# $filter = *{attrs for filtering}
-# GET   /api/v1/users/me                                    (req: user)
-# GET   /api/v1/users/me/accounts                           (req: user)
-# GET   /api/v1/users/me/accounts/{number}                  (req: user)
-# GET   /api/v1/users/me/accounts/{number}/payments?$filter (req: user)
-# GET   /api/v1/admin/users?$pagination,order_by,$filter            (req: admin)
-# POST  /api/v1/admin/users                                         (req: admin)
-# GET   /api/v1/admin/users/{id}                                    (req: admin)
-# PATCH /api/v1/admin/users/{id}                                    (req: admin)
-# GET   /api/v1/admin/users/{id}/accounts?order_by,$pagination      (req: admin)
-# GET   /api/v1/admin/users/{id}/accounts/{number}                  (req: admin)
-# GET   /api/v1/admin/users/{id}/accounts/{number}/payments?$filter (req: admin)
+# USER API:
+# GET   /api/v1/users/me                                (req: user)
+# GET   /api/v1/users/me/accounts                       (req: user)
+# GET   /api/v1/users/me/accounts/{id}                  (req: user)
+# GET   /api/v1/users/me/accounts/{id}/payments?$filter (req: user)
+
+# ADMIN API:
+# GET   /api/v1/admin/users?$pagination,$ordering,$filter       (req: admin)
+# POST  /api/v1/admin/users                                     (req: admin)
+# GET   /api/v1/admin/users/{id}                                (req: admin)
+# PATCH /api/v1/admin/users/{id}                                (req: admin)
+# GET   /api/v1/admin/users/{id}/accounts?$ordering,$pagination (req: admin)
+# GET   /api/v1/admin/users/{id}/accounts/{id}                  (req: admin)
+# GET   /api/v1/admin/users/{id}/accounts/{id}/payments?$filter (req: admin)
+
+# AUTH:
 # POST  /api/v1/auth/login
 # POST  /api/v1/auth/refresh (req: user)
+
+# WEBHOOKS:
 # POST  /api/v1/webhooks/payment
