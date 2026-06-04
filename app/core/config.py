@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     def asyncpg_db_url(self):
         return f'postgresql+asyncpg://{self.DB_USER}:{self.DB_PASS}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}'
 
+    @property
+    def psycopg2_db_url(self):
+        return f'postgresql+psycopg2://{self.DB_USER}:{self.DB_PASS}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}'
+
     @field_validator('SECRET_KEY')
     @classmethod
     def _validate_secret_key(cls, value: str, info: ValidationInfo):

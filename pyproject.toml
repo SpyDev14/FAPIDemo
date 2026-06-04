@@ -5,10 +5,28 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "fastapi[all]>=0.136.1",
-    "sqlalchemy[postgresql-asyncpg]>=2.0.49",
+    "fastapi[all]>=0.136.3",
+    "sqlalchemy[postgresql-asyncpg]>=2.0.50",
     "alembic>=1.18.4",
     "pwdlib[argon2]>=0.3.0",
+    "fastapi-filter>=3.0.0",
+    "fastapi-pagination>=0.15.14",
+]
+
+[dependency-groups]
+dev = [
+    "psycopg2-binary>=2.9.12",
+    "pytest>=9.0.3",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.15.16",
+]
+prod = [
+    "psycopg2>=2.9.12",
+]
+
+### uv ###
+[tool.uv]
+default-groups = ["dev"] # Use --no-default-groups in prod scripts
 
 ### Alembic ###
 [tool.alembic]

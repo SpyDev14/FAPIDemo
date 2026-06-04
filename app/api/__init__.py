@@ -3,12 +3,9 @@ from fastapi import APIRouter
 from app.utils.routers import include_routers
 from .                 import healthcheck, v1
 
-# Я специально сделал передачу аргументов многострочной с запятой в конце,
-# чтобы добавление новых параметров вызывало минимум git конфликтов
 api_router = APIRouter(
     prefix='/api',
 )
-
 include_routers(api_router, [
     healthcheck.router,
     v1.router,

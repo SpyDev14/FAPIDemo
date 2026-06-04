@@ -1,6 +1,7 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from app.modules.user import get_current_admin
 
-router = APIRouter(prefix='/admin')
+router = APIRouter(prefix='/admin', dependencies=[Depends(get_current_admin)])
 
 
 # GET   /api/v1/admin/users?$pagination,order_by,$filter            (req: admin)

@@ -5,8 +5,6 @@ import uvicorn
 from app.core.config import settings
 from app.api         import api_router
 
-# Я специально сделал передачу аргументов многострочной с запятой в конце,
-# чтобы добавление новых параметров вызывало минимум git конфликтов
 app = FastAPI(
     debug=settings.DEBUG,
 )
