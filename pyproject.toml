@@ -9,6 +9,43 @@ dependencies = [
     "sqlalchemy[postgresql-asyncpg]>=2.0.49",
     "alembic>=1.18.4",
     "pwdlib[argon2]>=0.3.0",
-    "fastapi-filter>=2.0.1",
-    "fastapi-pagination>=0.15.13",
-]
+
+### Alembic ###
+[tool.alembic]
+script_location = "alembic"
+prepend_sys_path = "."
+path_separator = "os"
+
+[tool.alembic.loggers]
+keys = ["root", "sqlalchemy", "alembic"]
+
+[tool.alembic.logger_root]
+level = "WARNING"
+handlers = ["console"]
+qualname = ""
+
+[tool.alembic.logger_sqlalchemy]
+level = "WARNING"
+handlers = []
+qualname = "sqlalchemy.engine"
+
+[tool.alembic.logger_alembic]
+level = "INFO"
+handlers = []
+qualname = "alembic"
+
+[tool.alembic.handlers]
+keys = ["console"]
+
+[tool.alembic.handler_console]
+class = "StreamHandler"
+args = "(sys.stderr,)"
+level = "NOTSET"
+formatter = "generic"
+
+[tool.alembic.formatters]
+keys = ["generic"]
+
+[tool.alembic.formatter_generic]
+format = "%(levelname)-5.5s [%(name)s] %(message)s"
+datefmt = "%H:%M:%S"
