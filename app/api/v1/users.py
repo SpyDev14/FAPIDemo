@@ -1,10 +1,9 @@
 from fastapi import APIRouter, Depends
 
-from app.api.dependencies import get_current_user
-from app.modules.user     import User
+from app.modules.user import User, get_current_user, UserDetailSchema
 
 
-router = APIRouter(prefix='users')
+router = APIRouter(prefix='/users')
 
 # $filter = *{attrs for filtering}
 # GET   /me                                (req: user)
@@ -14,7 +13,7 @@ router = APIRouter(prefix='users')
 
 @router.get('/me')
 async def get_me(user: User = Depends(get_current_user)):
-    raise NotImplementedError
+    return UserDetailSchema.from_user(user)
 
 @router.get('/me/accounts')
 async def get_my_accounts_list(user: User = Depends(get_current_user)):

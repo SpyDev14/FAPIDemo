@@ -13,7 +13,7 @@ app = FastAPI(
 app.include_router(api_router)
 
 @app.get('/')
-async def home_route():
+async def redirect_to_docs_route():
     return RedirectResponse('/docs')
 
 if __name__ == '__main__':

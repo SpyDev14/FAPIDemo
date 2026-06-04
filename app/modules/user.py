@@ -1,19 +1,22 @@
-from datetime import datetime
-from decimal  import Decimal
+from typing   import TYPE_CHECKING, Self
 from enum     import StrEnum
 
-from sqlalchemy.orm import relationship, Mapped, mapped_column
-from sqlalchemy import (
-    BigInteger, String, Numeric, Enum, DateTime,
-    ForeignKey, func,
-)
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm         import relationship, Mapped, mapped_column
+from sqlalchemy             import String, Enum, select
+from pydantic import BaseModel
+from fastapi import Depends
 
 from app.utils.orm.relationship_cascade import ALL_AND_DELETE_ORPHAN
-from app.utils.orm.fk_on_delete         import CASCADE
-from app.modules.base.models            import BaseModel
+from app.utils.orm.shortcuts            import get_or_404
+from app.utils.fastapi.deps             import AppScopeDependency
+from app.core.database                  import Base
 
+if TYPE_CHECKING:
+    from app.modules.accounts import Account
 
-class User(BaseModel):
+### Models ###
+class User(Base):
     __tablename__ = 'users'
 
     # Я использую строки вместо чисел для лучшей читаемости в логах и
@@ -64,55 +67,40 @@ class User(BaseModel):
     # special models for it (if needs dynamically roles). This is not
     # necessary now and will be over-engineering.
 
-# I use Numeric (Decimal) instead of float because float has inaccuracies in
-# rounding, what absolutely not allowed in finances (common knowledge, but i
-# decided mention it anyway)
-# I know about type_annotation_map and their abilities, but now it be over-engineering
-_Money = Numeric(15, 2) # (now i chosen simple alias so that there are no duplicate)
-class Account(BaseModel):
-    '''`User` bank account ("Счёт")'''
-    __tablename__ = 'accounts'
+### Schemas ###
+class UserDetailSchema(BaseModel):
+    id: int
+    email: str
+    full_name: str
 
-    user_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey(User.id, ondelete=CASCADE), index=True,
-    )
-    # ID from external payment system. Used in webhook.
-    external_id: Mapped[int] = mapped_column(BigInteger, unique=True)
-    user: Mapped[User] = relationship(User, back_populates='accounts')
-    balance: Mapped[Decimal] = mapped_column(_Money, default=Decimal('0.00'))
+    @classmethod
+    def from_user(cls, user: User) -> Self:
+        return cls.model_validate(user, from_attributes=True)
 
-    payments: Mapped[list['Payment']] = relationship(
-        'Payment', back_populates='account', cascade=ALL_AND_DELETE_ORPHAN,
-    )
+class UserUpdateSchema(BaseModel):
+    full_name: str
 
-class Payment(BaseModel):
-    __tablename__ = 'payments'
+class UserCreateSchema(BaseModel):
+    email: str
+    full_name: str
+    password: str
 
-    amount: Mapped[Decimal] = mapped_column(_Money)
-    account_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey(Account.id, ondelete=CASCADE), index=True,
-    )
-    account: Mapped[Account] = relationship(Account, back_populates='payments')
-    transaction_id: Mapped[str] = mapped_column(String(36), unique=True)
-    # Normally we'd sort these records with newest first, but since
-    # the id increases with each new record, we sort by id descending
-    # instead of created_at — because I don't want to create an extra
-    # index (it wouldn't make sense here). So this field is used only
-    # for data storage.
-    # As we all know, indexes take up disk space and slow down UPDATE
-    # & INSERT, but in return they speed up any operations on that field
-    # (filtering, sorting, JOINs, etc.). Therefore every index must be
-    # justified and necessary; any field we frequently query against
-    # should be indexed.
-    # Обычно мы будем сортировать эти записи в порядке "сначала новые",
-    # но так как id увеличивается с каждой новой записью, сортировка
-    # будет вестись не по created_at, а по уменьшению id, так как я не
-    # хочу создавать лишний индекс (это не имеет смысла). Поэтому поле
-    # используется только для хранения данных.
-    # Всем известная информация: индексы занимают много места на диске,
-    # замедляют UPDATE & INSERT, взамен ускоряя все операции по полю
-    # (такие как фильтрация, сортировка, JOIN-ы и так далее). Поэтому
-    # каждый индекс должен быть оправдан и необходим, каждое поле по
-    # которому мы часто производим операции должно быть индексировано.
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),
-                                                 server_default=func.now())
+### Services ###
+class UserService:
+    async def get_user_or_404(self, user_id: int, db_session: AsyncSession) -> User:
+        return await get_or_404(
+            select(User).where(User.id == user_id),
+            f"User by id {user_id} does not exists",
+            db_session
+        )
+
+### Deps ###
+@AppScopeDependency
+def get_user_service():
+    return UserService()
+
+async def get_current_user() -> User:
+    raise NotImplementedError()
+
+async def get_current_admin(user: User = Depends(get_current_user)):
+    raise NotImplementedError()

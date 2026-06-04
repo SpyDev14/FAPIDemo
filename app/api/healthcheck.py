@@ -1,0 +1,7 @@
+from fastapi import APIRouter, Response
+
+router = APIRouter()
+
+@router.get('/healthcheck')
+def healthcheck():
+    return Response()

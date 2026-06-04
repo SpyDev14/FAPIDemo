@@ -1,12 +1,19 @@
 from fastapi import APIRouter
-from .v1 import router as v1_router
+
+from app.utils.routers import include_routers
+from .                 import healthcheck, v1
 
 # Я специально сделал передачу аргументов многострочной с запятой в конце,
 # чтобы добавление новых параметров вызывало минимум git конфликтов
 api_router = APIRouter(
     prefix='/api',
 )
-api_router.include_router(v1_router)
+
+include_routers(api_router, [
+    healthcheck.router,
+    v1.router,
+])
+
 
 # USER API:
 # GET   /api/v1/users/me                                (req: user)

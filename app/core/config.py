@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic          import field_validator, ValidationInfo
 
@@ -12,7 +14,13 @@ class Settings(BaseSettings):
     DB_PORT: int = 5432
     DB_NAME: str
 
-    model_config = SettingsConfigDict(env_file='.env')
+    ### [Auth] ###
+    JWT_REFRESH_TOKEN_LIFETIME: timedelta = timedelta(days=30)
+    JWT_ACCESS_TOKEN_LIFETIME:  timedelta = timedelta(minutes=15)
+
+    model_config = SettingsConfigDict(
+        env_file='.env'
+    )
 
     @property
     def asyncpg_db_url(self):
@@ -23,8 +31,8 @@ class Settings(BaseSettings):
     def _validate_secret_key(cls, value: str, info: ValidationInfo):
         debug = info.data['DEBUG']
         # cannot get access to cls.SECRET_KEY: AttributeError. It's pydantic magic
-        if not debug and value == cls.model_fields[info.field_name].default:
+        if not debug and value == cls.model_fields[info.field_name].default: # type: ignore
             raise ValueError(f'{info.field_name} should be specified in production')
         return value
 
-settings = Settings()
+settings = Settings() # type: ignore
