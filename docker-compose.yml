@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASS}
       POSTGRES_DB: ${DB_NAME}
-    volumes: [db-data:/var/lib/postgresql/data]
+    volumes: [db-data:/var/lib/postgresql]
     networks: [main]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
@@ -25,6 +25,7 @@ services:
       DB_HOST: db
       DB_PORT: 5432
     ports: ["8000:8000"]
+    command: fastapi dev --reload
     networks: [main]
     healthcheck:
       test: ["CMD", "ping", "127.0.0.1:8000/api/healthcheck"]

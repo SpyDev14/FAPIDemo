@@ -17,6 +17,7 @@ if config.config_file_name is not None:
 
 # MetaData object for 'autogenerate' support
 target_metadata = Base.metadata
+db_url = settings.psycopg2_db_url
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
@@ -29,9 +30,8 @@ def run_migrations_offline() -> None:
     Calls to context.execute() here emit the given string to the
     script output.
     """
-    url = config.get_main_option("sqlalchemy.url")
     context.configure(
-        url=url,
+        url=db_url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -48,7 +48,7 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
     """
     alembic_conf = config.get_section(config.config_ini_section, {})
-    alembic_conf['sqlalchemy.url'] = settings.psycopg2_db_url
+    alembic_conf['sqlalchemy.url'] = db_url
     connectable = engine_from_config(
         alembic_conf,
         prefix="sqlalchemy.",
