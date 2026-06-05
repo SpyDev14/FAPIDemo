@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:18
@@ -11,30 +9,41 @@ services:
     networks: [main]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
-      interval: 5s
+      interval: 3s
       timeout: 5s
       retries: 5
-      start_period: 5s
+      start_period: 2s
     env_file: [.env]
 
   backend:
     build: .
     depends_on:
-      db: { condition: service_healthy }
+      db:
+        condition: service_healthy
     environment:
       DB_HOST: db
       DB_PORT: 5432
     ports: ["8000:8000"]
-    command: fastapi dev --reload
-    networks: [main]
+    command: >
+      sh -c "
+        uv run alembic upgrade head &&
+        exec uv run fastapi dev
+          --host 0.0.0.0
+          --port 8000
+          --reload
+      "
     healthcheck:
-      test: ["CMD", "ping", "127.0.0.1:8000/api/healthcheck"]
+      test: ["CMD", "curl", "-f", "127.0.0.1:8000/api/healthcheck"]
       interval: 1m30s
       timeout: 5s
       retries: 5
-      start_period: 3s
-    volumes: [.:/app]
+      start_period: 5s
+    volumes: [.:/app:ro, /app/.venv]
+    networks: [main]
     env_file: [.env]
+    tty: true # needs for colored output in attached console
+
+# TODO: Настроить docker watch вместо volumes binding
 
 volumes:
   db-data:
