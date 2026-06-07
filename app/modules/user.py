@@ -28,8 +28,8 @@ class User(Base):
     # при написании сырых SQL запросов (оптимизации), при просмотре БД
     # инструментами по типу PG Admin.
     class Role(StrEnum):
-        USER = 'user'
         ADMIN = 'admin'
+        USER = 'user'
 
     # NOTE: часто ищем по почте (напр. при логине (auth))
     # (unique уже добавляет индекс (UNIQUE INDEX in sql))
