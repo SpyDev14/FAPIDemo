@@ -1,8 +1,11 @@
 from datetime import timedelta
+from pathlib  import Path
+import logging.config
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic          import field_validator, ValidationInfo
 
+BASE_DIR = Path(__file__).resolve().parent.parent
 class Settings(BaseSettings):
     DEBUG: bool = False # should be under SK because SK validation depends on DEBUG value
     SECRET_KEY: str = 'SECRET_KEY'
@@ -19,7 +22,7 @@ class Settings(BaseSettings):
     JWT_ACCESS_TOKEN_LIFETIME:  timedelta = timedelta(minutes=15)
 
     model_config = SettingsConfigDict(
-        env_file='.env'
+        env_file=BASE_DIR / '.env'
     )
 
     @property
@@ -40,3 +43,32 @@ class Settings(BaseSettings):
         return value
 
 settings = Settings() # type: ignore
+
+LOGGING_CONF = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "standard": {"format": "[%(levelname)s] %(asctime)s %(name)s:%(line)s: %(message)s"},
+    },
+    "handlers": {
+        "console": {
+            "formatter": "standard",
+            "class": "logging.StreamHandler"
+        }
+    },
+    "loggers": {
+        "app": {
+            "level": "DEBUG" if settings.DEBUG else "INFO",
+            "handlers": ["console"],
+            "propagate": False,
+        },
+    },
+    "root": {
+        "level": "INFO",
+        "handlers": ["console"],
+        "propagate": False,
+    }
+}
+
+def setup_logging():
+    logging.config.dictConfig(LOGGING_CONF)

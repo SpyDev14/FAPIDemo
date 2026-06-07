@@ -1,6 +1,5 @@
 from datetime import datetime
 from decimal  import Decimal
-from typing   import TYPE_CHECKING
 from uuid     import UUID
 import hashlib, hmac, logging
 
@@ -12,11 +11,10 @@ from sqlalchemy import (
     ForeignKey, func, select, update
 )
 from pydantic import BaseModel
-from fastapi  import Depends
 
 from app.utils.orm.relationship_cascade import ALL_AND_DELETE_ORPHAN
 from app.utils.orm.fk_on_delete         import CASCADE
-from app.utils.orm.shortcuts            import get_or_create, is_exists
+from app.utils.orm.shortcuts            import get_or_create
 from app.utils.fastapi.deps             import AppScopeDependency
 from app.modules.user                   import User
 from app.core.database                  import Base
