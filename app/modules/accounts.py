@@ -23,8 +23,12 @@ from app.core.config                    import settings
 _logger = logging.getLogger(__name__)
 
 ### Models ###
-# Base.type_annotation_map be over-engineering for it
-_Money = Numeric(15, 2) # (i chosen simple alias so that there are no duplicate)
+# Base.type_annotation_map было бы оверинженерингом для этого,
+# поэтому я выбрал простой алиас через переменную (чтобы была
+# согласованность)
+# Если эти двое (модели) будут разбиты на разные модули, можно
+# будет создать модуль с типами и добавить его в annotation_map
+_Money = Numeric(15, 2)
 class Account(Base):
     __tablename__ = 'accounts'
 
@@ -50,16 +54,6 @@ class Payment(Base):
     amount: Mapped[Decimal] = mapped_column(_Money)
     transaction_id: Mapped[UUID] = mapped_column(unique=True)
 
-    # Normally we'd sort these records with newest first, but since
-    # the id increases with each new record, we sort by id descending
-    # instead of created_at — because I don't want to create an extra
-    # index (it wouldn't make sense here). So this field is used only
-    # for data storage.
-    # As we all know, indexes take up disk space and slow down UPDATE
-    # & INSERT, but in return they speed up any operations on that field
-    # (filtering, sorting, JOINs, etc.). Therefore every index must be
-    # justified and necessary; any field we frequently query against
-    # should be indexed.
     # Обычно мы будем сортировать эти записи в порядке "сначала новые",
     # но так как id увеличивается с каждой новой записью, сортировка
     # будет вестись не по created_at, а по уменьшению id, так как я не
@@ -95,10 +89,9 @@ class PaymentService:
         return hashlib.sha256(signature_string.encode()).hexdigest()
 
     def verify_webhook_signature(self, data: PaymentWebhookSchema) -> bool:
-        """Returns signature is verified"""
         expected_signature = self._compute_webhook_signature(data)
 
-        # NOTE: use hmac.compare instead `==` because it's enforced from timing attack
+        # NOTE: Используйте hmac.compare вместо `==` потому-что он защищён от тайминг-атак
         return hmac.compare_digest(expected_signature, data.signature)
 
     async def _get_or_create_user_account(self, external_id: int, user: 'User', db_session: AsyncSession) -> tuple[Account, bool]:
@@ -117,9 +110,10 @@ class PaymentService:
 
     async def try_apply_payment(self, data: PaymentWebhookSchema, user: 'User', db_session: AsyncSession) -> bool:
         """
-        Returns `True` if processed, return `False` if already processed.
+        Возвращает `True`, если обработано и `False`, если уже обработано.
+
         Raises:
-            HTTPException: User not found
+            HTTPException: Пользователь не найден
         """
         assert data.user_id != user.id, 'Given user.id != given data.user_id'
 
@@ -133,7 +127,9 @@ class PaymentService:
                 ))
                 await self._change_account_balance(account.id, data.amount, db_session)
                 return True
-        except IntegrityError: # be raised on duplicates because transaction_id is unique
+        except IntegrityError:
+            # будет вызвано при попытке создания дубликата т.к transaction_id должно
+            # быть уникально, т.е это блок обработки повторного вызова
             _logger.info("Attempt to apply already applied payment. Attempt ignored.")
             return False
 
