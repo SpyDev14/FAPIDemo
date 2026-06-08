@@ -77,7 +77,7 @@ class PaymentWebhookSchema(BaseModel):
 
 ### Services ###
 class PaymentService:
-    def _compute_webhook_signature(self, data: PaymentWebhookSchema):
+    def _compute_webhook_signature(self, data: PaymentWebhookSchema, secret_key: str):
         # В сторонней системе подпись генерируется как SHA256 хеш строки,
         # полученной путём конкатенации строковых представлений всех значений,
         # отсортированных в алфавитном порядке по названию и с добавленным на конце
@@ -85,11 +85,11 @@ class PaymentService:
         # transaction_id и amount строка для сигнатуры будет выглядеть как:
         # f"{account_id}{amount}{transaction_id}{user_id}{secret_key}"
         data_dict = data.model_dump(exclude={'signature'})
-        signature_string = ''.join(data_dict[k] for k in sorted(data_dict.keys())) + settings.SECRET_KEY
+        signature_string = ''.join(str(data_dict[k]) for k in sorted(data_dict.keys())) + secret_key
         return hashlib.sha256(signature_string.encode()).hexdigest()
 
     def verify_webhook_signature(self, data: PaymentWebhookSchema) -> bool:
-        expected_signature = self._compute_webhook_signature(data)
+        expected_signature = self._compute_webhook_signature(data, settings.SECRET_KEY)
 
         # NOTE: Используйте hmac.compare вместо `==` потому-что он защищён от тайминг-атак
         return hmac.compare_digest(expected_signature, data.signature)
@@ -102,24 +102,32 @@ class PaymentService:
         )
 
     async def _change_account_balance(self, account_id: int, amount: int, db_session: AsyncSession):
+        """
+        Изменяет баланс по переданному id на переданную сумму. Сумма (`amount`) **может быть отрицательной**.
+        """
         await db_session.execute(
             update(Account)
             .where(Account.id == account_id)
-            .values(balance = Account.balance + amount)
+            .values(balance = Account.balance + amount) # Атомарное изменение баланса чтобы из-за RC деньги не исчезли
         )
 
     async def try_apply_payment(self, data: PaymentWebhookSchema, user: 'User', db_session: AsyncSession) -> bool:
         """
-        Возвращает `True`, если обработано и `False`, если уже обработано.
+        Возвращает `True`, если было обработано и `False`, если оплата уже была обработана.
+
+        ВАЖНО: вызывает rollback на текущей сессии, начинает **новую**
+        транзакцию (BEGIN), делает коммит в случае успеха.
 
         Raises:
             HTTPException: Пользователь не найден
         """
-        assert data.user_id != user.id, 'Given user.id != given data.user_id'
+        # Если понадобится вложенный begin (begin_nested, который SAVEPOINT) - создам отдельную функцию
+        assert data.user_id == user.id, 'Given user.id != given data.user_id'
 
         account, _ = await self._get_or_create_user_account(data.account_id, user, db_session)
+        await db_session.rollback()
         try:
-            async with db_session.begin_nested():
+            async with db_session.begin(): # Выполнит COMMIT, если всё успешно, иначе ROLLBACK
                 db_session.add(Payment(
                     transaction_id = data.transaction_id,
                     amount = data.amount,
@@ -129,11 +137,11 @@ class PaymentService:
                 return True
         except IntegrityError:
             # будет вызвано при попытке создания дубликата т.к transaction_id должно
-            # быть уникально, т.е это блок обработки повторного вызова
+            # быть уникально, т.е это блок обработки повторного вызова.
             _logger.info("Attempt to apply already applied payment. Attempt ignored.")
             return False
 
 ### Deps ###
 @AppScopeDependency
-def get_webhook_service() -> PaymentService:
+def get_payment_service() -> PaymentService:
     return PaymentService()

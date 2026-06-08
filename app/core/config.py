@@ -5,7 +5,10 @@ import logging.config
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic          import field_validator, ValidationInfo
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+from app.utils.logging import filters
+
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 class Settings(BaseSettings):
     DEBUG: bool = False # should be under SK because SK validation depends on DEBUG value
     SECRET_KEY: str = 'SECRET_KEY'
@@ -46,14 +49,17 @@ settings = Settings() # type: ignore
 
 LOGGING_CONF = {
     "version": 1,
-    "disable_existing_loggers": False,
+    "filters": {
+        "colorize": {'()': filters.ColorizeLevelnameFilter}
+    },
     "formatters": {
-        "standard": {"format": "[%(levelname)s] %(asctime)s %(name)s:%(line)s: %(message)s"},
+        "standard": { "format": "[%(levelname)s] %(asctime)s %(module)s:%(lineno)d: %(message)s" },
     },
     "handlers": {
         "console": {
             "formatter": "standard",
-            "class": "logging.StreamHandler"
+            "class": "logging.StreamHandler",
+            "filters": ["colorize"],
         }
     },
     "loggers": {
@@ -71,4 +77,33 @@ LOGGING_CONF = {
 }
 
 def setup_logging():
+    """Предназначен для вызова в main, применяет конфиг логгирования"""
     logging.config.dictConfig(LOGGING_CONF)
+
+ALEMBIC_LOGGING_CONF = {
+    "version": 1,
+    "filters": {
+        "colorize": {'()': filters.ColorizeLevelnameFilter}
+    },
+    "formatters": {
+        "standard": { "format": "[%(levelname)s] %(module)s: %(message)s", }
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "standard",
+            "filters": ["colorize"],
+        }
+    },
+    "loggers": {
+        "alembic": {
+            "level": "INFO",
+            "handlers": ["console"],
+            "propagate": False,
+        },
+    },
+    "root": {
+        "level": "WARNING",
+        "handlers": ["console"],
+    },
+}

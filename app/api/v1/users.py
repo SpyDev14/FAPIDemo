@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from app.modules.user import User, get_current_user, UserDetailSchema
 
 
-router = APIRouter(prefix='/users')
+router = APIRouter(prefix='/users', tags=['user'])
 
 # $filter = *{attrs for filtering}
 # GET   /me                                (req: user)

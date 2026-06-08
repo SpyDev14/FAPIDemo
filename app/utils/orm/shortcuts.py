@@ -5,6 +5,10 @@ from sqlalchemy             import Select
 from app.core.exceptions import Http404
 from app.core.database   import Base
 
+# TODO: разобраться с непонятной ошибкой в вебхук эндпоинте
+# <sys>:0: SAWarning: Object of type <Account> not in session, add operation along 'User.accounts' will not proceed (This warning originated from the Session 'autoflush' process, which was invoked automatically in response to a user-initiated operation. Consider using ``no_autoflush`` context manager if this warning happened while initializing objects.)
+# <sys>:0: SAWarning: Object of type <Account> not in session, add operation along 'User.accounts' will not proceed (This warning originated from the Session 'autoflush' process, which was invoked automatically in response to a user-initiated operation. Consider using ``no_autoflush`` context manager if this warning happened while initializing objects.)
+
 async def get_or_create[T: Base](
         select_stmt: Select[tuple[T]],
         new_instance: T,

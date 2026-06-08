@@ -13,43 +13,51 @@ services:
       timeout: 5s
       retries: 5
       start_period: 2s
+    ports: ["5432:5432"]
     env_file: [.env]
 
-  backend:
-    build: .
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      DB_HOST: db
-      DB_PORT: 5432
-    ports: ["8000:8000"]
-    command: >
-      sh -c "
-        uv run alembic upgrade head &&
-        exec uv run fastapi dev
-          --host 0.0.0.0
-          --port 8000
-          --reload
-      "
-    healthcheck:
-      test: ["CMD", "curl", "-f", "127.0.0.1:8000/api/healthcheck"]
-      interval: 1m30s
-      timeout: 5s
-      retries: 5
-      start_period: 5s
-    develop: # file syncing
-      watch:
-        - path: ./
-          action: sync
-          target: /app
-          ignore:
-            - uv.lock
-        - path: ./uv.lock
-          action: rebuild
-    networks: [main]
-    env_file: [.env]
-    tty: true # needs for colored output in attached console, disable ansi-codes removing
+# TODO: Убрать это всё, так как бекенд должен быть развёрнут именно на хост машине
+# для работы, через докер ТОЛЬКО вспомогательные сервисы (БД, Redis, Celery и т.д
+# Потому-что не получится: 1 - дебажить, 2 - генерировать миграции и мб что-то ещё
+
+# (не убрать, а перенести в .prod, убрать только watch и tty)
+  # backend:
+  #   build: .
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   environment:
+  #     DB_HOST: db
+  #     DB_PORT: 5432
+  #   ports: ["8000:8000"]
+  #   command: >
+  #     sh -c "
+  #       uv run alembic upgrade head &&
+  #       exec uv run fastapi dev
+  #         --host 0.0.0.0
+  #         --port 8000
+  #         --reload
+  #     "
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "127.0.0.1:8000/api/healthcheck"]
+  #     interval: 1m30s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 5s
+  #   develop: # file syncing
+  #     watch:
+  #       - path: ./
+  #         action: sync
+  #         target: /app
+  #         ignore:
+  #           - uv.lock
+  #       - path: ./uv.lock
+  #         action: rebuild
+  #       - path: ./alembic/
+  #         action:
+  #   networks: [main]
+  #   env_file: [.env]
+  #   tty: true # needs for colored output in attached console, disable ansi-codes removing
 
 volumes:
   db-data:

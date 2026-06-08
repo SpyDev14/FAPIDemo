@@ -1,22 +1,26 @@
-from logging.config import fileConfig
+import logging.config
 
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 
 from app.core.database import Base
-from app.core.config   import settings
+from app.core.config   import settings, ALEMBIC_LOGGING_CONF
+from app.modules       import init_all_models_for_metadata
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
 # Interpret the config file for Python logging.
-# This line sets up loggers basically.
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+# This line sets up loggers basically.\
+logging.config.dictConfig(ALEMBIC_LOGGING_CONF)
 
 # MetaData object for 'autogenerate' support
 target_metadata = Base.metadata
+init_all_models_for_metadata()
+# target_metadata - лишь ссылка на объект в памяти,
+# его изменения отразится и здесь, так что всё в порядке
+
 db_url = settings.psycopg2_db_url
 
 def run_migrations_offline() -> None:
