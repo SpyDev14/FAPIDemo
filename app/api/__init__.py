@@ -1,13 +1,12 @@
 from fastapi import APIRouter
 
 from app.utils.routers import include_routers
-from .                 import healthcheck, v1
+from .                 import v1
 
 api_router = APIRouter(
     prefix='/api',
 )
 include_routers(api_router, [
-    healthcheck.router,
     v1.router,
 ])
 

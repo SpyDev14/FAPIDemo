@@ -13,7 +13,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 2s
-    ports: ["5432:5432"]
+    ports: [5432:5432]
     env_file: [.env]
 
 # TODO: Убрать это всё, так как бекенд должен быть развёрнут именно на хост машине
@@ -29,7 +29,7 @@ services:
   #   environment:
   #     DB_HOST: db
   #     DB_PORT: 5432
-  #   ports: ["8000:8000"]
+  #   ports: [8000:8000]
   #   command: >
   #     sh -c "
   #       uv run alembic upgrade head &&

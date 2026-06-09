@@ -1,6 +1,5 @@
 from fastapi.responses import RedirectResponse
-from fastapi           import FastAPI
-import uvicorn
+from fastapi           import FastAPI, Response
 
 from app.core.config import settings, setup_logging
 from app.api         import api_router
@@ -13,9 +12,11 @@ app = FastAPI(
 )
 app.include_router(api_router)
 
-@app.get('/')
-async def redirect_to_docs_route():
-    return RedirectResponse('/docs')
 
-if __name__ == '__main__':
-    uvicorn.run(app)
+@app.get('/health')
+async def healthcheck():
+    return Response(status_code=200)
+
+@app.get('/')
+async def redirect_to_docs():
+    return RedirectResponse('/docs')
