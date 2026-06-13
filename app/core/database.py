@@ -1,7 +1,7 @@
-from typing import AsyncGenerator
+from typing import AsyncGenerator, TypeAlias
 from uuid   import UUID
 
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession as _AsyncSession
 from sqlalchemy.orm         import Mapped, mapped_column, DeclarativeBase
 from sqlalchemy             import BigInteger, UUID as SQL_UUID
 
@@ -41,6 +41,9 @@ _async_session_maker = async_sessionmaker(
     _engine, expire_on_commit=False
 )
 
-async def get_async_db_session() -> AsyncGenerator[AsyncSession, None]:
+AsyncDBSession: TypeAlias = _AsyncSession
+"""Для реимпорта под аннотации"""
+
+async def get_async_db_session() -> AsyncGenerator[AsyncDBSession, None]:
     async with _async_session_maker() as session:
         yield session

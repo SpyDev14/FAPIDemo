@@ -3,21 +3,20 @@ from decimal  import Decimal
 from uuid     import UUID
 import hashlib, hmac, logging
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc         import IntegrityError
-from sqlalchemy.orm         import relationship, Mapped, mapped_column
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy import (
     BigInteger, Numeric, DateTime,
     ForeignKey, func, select, update
 )
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.utils.orm.relationship_cascade import ALL_AND_DELETE_ORPHAN
 from app.utils.orm.fk_on_delete         import CASCADE
 from app.utils.orm.shortcuts            import get_or_create
 from app.utils.fastapi.deps             import AppScopeDependency
 from app.modules.user                   import User
-from app.core.database                  import Base
+from app.core.database                  import Base, AsyncDBSession
 from app.core.config                    import settings
 
 _logger = logging.getLogger(__name__)
@@ -68,7 +67,17 @@ class Payment(Base):
                                                  server_default=func.now())
 
 ### Schemas ###
-class PaymentWebhookSchema(BaseModel):
+# :: Account
+class AccountRead(BaseModel):
+    id: int = Field(alias='external_id')
+    balance: Decimal
+
+# :: Payment
+class PaymentRead(BaseModel):
+    amount: Decimal
+    created_at: datetime
+
+class PaymentWebhookData(BaseModel):
     user_id: int
     account_id: int
     transaction_id: str
@@ -77,7 +86,7 @@ class PaymentWebhookSchema(BaseModel):
 
 ### Services ###
 class PaymentService:
-    def _compute_webhook_signature(self, data: PaymentWebhookSchema, secret_key: str):
+    def _compute_webhook_signature(self, data: PaymentWebhookData, secret_key: str):
         # В сторонней системе подпись генерируется как SHA256 хеш строки,
         # полученной путём конкатенации строковых представлений всех значений,
         # отсортированных в алфавитном порядке по названию и с добавленным на конце
@@ -88,30 +97,30 @@ class PaymentService:
         signature_string = ''.join(str(data_dict[k]) for k in sorted(data_dict.keys())) + secret_key
         return hashlib.sha256(signature_string.encode()).hexdigest()
 
-    def verify_webhook_signature(self, data: PaymentWebhookSchema) -> bool:
+    def verify_webhook_signature(self, data: PaymentWebhookData) -> bool:
         expected_signature = self._compute_webhook_signature(data, settings.SECRET_KEY)
 
         # NOTE: Используйте hmac.compare вместо `==` потому-что он защищён от тайминг-атак
         return hmac.compare_digest(expected_signature, data.signature)
 
-    async def _get_or_create_user_account(self, external_id: int, user: 'User', db_session: AsyncSession) -> tuple[Account, bool]:
+    async def _get_or_create_user_account(self, external_id: int, user: 'User', db: AsyncDBSession) -> tuple[Account, bool]:
         return await get_or_create(
             select(Account).where(Account.user == user),
             Account(user = user, external_id = external_id),
-            db_session
+            db
         )
 
-    async def _change_account_balance(self, account_id: int, amount: int, db_session: AsyncSession):
+    async def _change_account_balance(self, account_id: int, amount: int, db: AsyncDBSession):
         """
         Изменяет баланс по переданному id на переданную сумму. Сумма (`amount`) **может быть отрицательной**.
         """
-        await db_session.execute(
+        await db.execute(
             update(Account)
             .where(Account.id == account_id)
             .values(balance = Account.balance + amount) # Атомарное изменение баланса чтобы из-за RC деньги не исчезли
         )
 
-    async def try_apply_payment(self, data: PaymentWebhookSchema, user: 'User', db_session: AsyncSession) -> bool:
+    async def try_apply_payment(self, data: PaymentWebhookData, user: 'User', db: AsyncDBSession) -> bool:
         """
         Возвращает `True`, если было обработано и `False`, если оплата уже была обработана.
 
@@ -119,21 +128,21 @@ class PaymentService:
         транзакцию (BEGIN), делает коммит в случае успеха.
 
         Raises:
-            HTTPException: Пользователь не найден
+            Http404: Пользователь не найден
         """
         # Если понадобится вложенный begin (begin_nested, который SAVEPOINT) - создам отдельную функцию
         assert data.user_id == user.id, 'Given user.id != given data.user_id'
 
-        account, _ = await self._get_or_create_user_account(data.account_id, user, db_session)
-        await db_session.rollback()
+        account, _ = await self._get_or_create_user_account(data.account_id, user, db)
+        await db.rollback()
         try:
-            async with db_session.begin(): # Выполнит COMMIT, если всё успешно, иначе ROLLBACK
-                db_session.add(Payment(
+            async with db.begin(): # Выполнит COMMIT, если всё успешно, иначе ROLLBACK
+                db.add(Payment(
                     transaction_id = data.transaction_id,
                     amount = data.amount,
                     account = account,
                 ))
-                await self._change_account_balance(account.id, data.amount, db_session)
+                await self._change_account_balance(account.id, data.amount, db)
                 return True
         except IntegrityError:
             # будет вызвано при попытке создания дубликата т.к transaction_id должно

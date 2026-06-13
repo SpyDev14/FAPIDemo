@@ -1,16 +1,15 @@
-from typing   import TYPE_CHECKING, Self
-from enum     import StrEnum
+from typing import TYPE_CHECKING, Self
+from enum   import StrEnum
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm         import relationship, Mapped, mapped_column
-from sqlalchemy             import String, Enum, select
-from pydantic import BaseModel
-from fastapi import Depends
+from sqlalchemy.orm import relationship, Mapped, mapped_column
+from sqlalchemy     import String, Enum, select
+from pydantic       import BaseModel
+from fastapi        import Depends
 
 from app.utils.orm.relationship_cascade import ALL_AND_DELETE_ORPHAN
 from app.utils.orm.shortcuts            import get_or_404
 from app.utils.fastapi.deps             import AppScopeDependency
-from app.core.database                  import Base
+from app.core.database                  import AsyncDBSession, Base
 
 if TYPE_CHECKING:
     from app.modules.accounts import Account
@@ -68,39 +67,38 @@ class User(Base):
     # necessary now and will be over-engineering.
 
 ### Schemas ###
-class UserDetailSchema(BaseModel):
+class UserRead(BaseModel):
     id: int
     email: str
     full_name: str
 
-    @classmethod
-    def from_user(cls, user: User) -> Self:
-        return cls.model_validate(user, from_attributes=True)
-
-class UserUpdateSchema(BaseModel):
+class UserUpdate(BaseModel):
     full_name: str
 
-class UserCreateSchema(BaseModel):
+class UserCreate(BaseModel):
     email: str
     full_name: str
     password: str
 
 ### Services ###
 class UserService:
-    async def get_user_or_404(self, user_id: int, db_session: AsyncSession) -> User:
+    async def get_user_or_404(self, user_id: int, db: AsyncDBSession) -> User:
         return await get_or_404(
             select(User).where(User.id == user_id),
             f"User by id {user_id} does not exists",
-            db_session
+            db
         )
+
+    async def get_user_accounts(self, user_id: int, db: AsyncDBSession) -> list[Account]:
+        return await db.scalar(select(User.accounts).where(User.id == user_id)) or []
 
 ### Deps ###
 @AppScopeDependency
 def get_user_service():
     return UserService()
 
-async def get_current_user() -> User:
+async def get_current_user() -> UserRead:
     raise NotImplementedError()
 
-async def get_current_admin(user: User = Depends(get_current_user)):
+async def get_current_admin(user: UserRead = Depends(get_current_user)) -> UserRead:
     raise NotImplementedError()

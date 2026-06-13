@@ -1,4 +1,4 @@
-from app.modules.accounts import PaymentService, PaymentWebhookSchema
+from app.modules.accounts import PaymentService, PaymentWebhookData
 
 
 class TestPaymentService:
@@ -8,7 +8,7 @@ class TestPaymentService:
     def test_verify_webhook_signature(self):
         SECRET_KEY = 'gfdmhghif38yrf9ew0jkf32'
 
-        true_data = PaymentWebhookSchema(
+        true_data = PaymentWebhookData(
             transaction_id = "5eae174f-7cd0-472c-bd36-35660f00132b",
             user_id = 1,
             account_id = 1,

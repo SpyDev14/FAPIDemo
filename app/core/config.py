@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     ### [Auth] ###
     JWT_REFRESH_TOKEN_LIFETIME: timedelta = timedelta(days=30)
     JWT_ACCESS_TOKEN_LIFETIME:  timedelta = timedelta(minutes=15)
+    JWT_ALGORITHM: str = 'HS256'
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / '.env'
