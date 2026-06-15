@@ -10,12 +10,13 @@ from sqlalchemy import (
     ForeignKey, func, select, update
 )
 from pydantic import BaseModel, Field
+from fastapi import Depends, status, HTTPException
 
 from app.utils.orm.relationship_cascade import ALL_AND_DELETE_ORPHAN
 from app.utils.orm.fk_on_delete         import CASCADE
-from app.utils.orm.shortcuts            import get_or_create
+from app.utils.orm.shortcuts            import get_or_404, get_or_create
 from app.utils.fastapi.deps             import AppScopeDependency
-from app.modules.user                   import User
+from app.modules.user                   import ExistsUser, User, UserService, get_user_service
 from app.core.database                  import Base, AsyncDBSession
 from app.core.config                    import settings
 
@@ -67,12 +68,12 @@ class Payment(Base):
                                                  server_default=func.now())
 
 ### Schemas ###
-# :: Account
+# [Account]
 class AccountRead(BaseModel):
     id: int = Field(alias='external_id')
     balance: Decimal
 
-# :: Payment
+# [Payment]
 class PaymentRead(BaseModel):
     amount: Decimal
     created_at: datetime
@@ -85,7 +86,10 @@ class PaymentWebhookData(BaseModel):
     signature: str
 
 ### Services ###
-class PaymentService:
+class AccountService:
+    def __init__(self, user_service: UserService):
+        self._user_service = user_service
+
     def _compute_webhook_signature(self, data: PaymentWebhookData, secret_key: str):
         # В сторонней системе подпись генерируется как SHA256 хеш строки,
         # полученной путём конкатенации строковых представлений всех значений,
@@ -97,16 +101,18 @@ class PaymentService:
         signature_string = ''.join(str(data_dict[k]) for k in sorted(data_dict.keys())) + secret_key
         return hashlib.sha256(signature_string.encode()).hexdigest()
 
-    def verify_webhook_signature(self, data: PaymentWebhookData) -> bool:
+    def _verify_webhook_signature(self, data: PaymentWebhookData) -> bool:
         expected_signature = self._compute_webhook_signature(data, settings.SECRET_KEY)
 
         # NOTE: Используйте hmac.compare вместо `==` потому-что он защищён от тайминг-атак
         return hmac.compare_digest(expected_signature, data.signature)
 
-    async def _get_or_create_user_account(self, external_id: int, user: 'User', db: AsyncDBSession) -> tuple[Account, bool]:
+    async def _get_or_create_account(
+            self, external_id: int, user: ExistsUser, db: AsyncDBSession
+        ) -> tuple[Account, bool]:
         return await get_or_create(
-            select(Account).where(Account.user == user),
-            Account(user = user, external_id = external_id),
+            select(Account).where(Account.user_id == user.id),
+            Account(user_id = user.id, external_id = external_id),
             db
         )
 
@@ -120,7 +126,7 @@ class PaymentService:
             .values(balance = Account.balance + amount) # Атомарное изменение баланса чтобы из-за RC деньги не исчезли
         )
 
-    async def try_apply_payment(self, data: PaymentWebhookData, user: 'User', db: AsyncDBSession) -> bool:
+    async def try_process_payment(self, data: PaymentWebhookData, db: AsyncDBSession) -> bool:
         """
         Возвращает `True`, если было обработано и `False`, если оплата уже была обработана.
 
@@ -129,11 +135,15 @@ class PaymentService:
 
         Raises:
             Http404: Пользователь не найден
+            HTTPException: Сигнатура сфальсифицирована
         """
-        # Если понадобится вложенный begin (begin_nested, который SAVEPOINT) - создам отдельную функцию
-        assert data.user_id == user.id, 'Given user.id != given data.user_id'
+        if not self._verify_webhook_signature(data):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f'Signature is fake')
 
-        account, _ = await self._get_or_create_user_account(data.account_id, user, db)
+        user = await self._user_service.get_user_or_404(data.user_id, db)
+        account, _ = await self._get_or_create_account(data.account_id, user, db)
+
+        # Если понадобится вложенный begin (begin_nested, который SAVEPOINT) - создам отдельную функцию
         await db.rollback()
         try:
             async with db.begin(): # Выполнит COMMIT, если всё успешно, иначе ROLLBACK
@@ -150,7 +160,56 @@ class PaymentService:
             _logger.info("Attempt to apply already applied payment. Attempt ignored.")
             return False
 
+    async def get_user_accounts(self, user: ExistsUser, db: AsyncDBSession) -> list[AccountRead]:
+        return list(
+            AccountRead.model_validate(acc, from_attributes=True) for acc in
+            await db.scalar(select(User.accounts).where(User.id == user.id)) or []
+        )
+
+    def _assert_account_belong_to_user(self, account: Account, owner: ExistsUser):
+        """
+        Проверяет, что аккаунт принадлежит пользователю. В случае, если нет - поднимает HTTPException с 403 кодом.
+        Raises:
+            HTTPException: Аккаунт не принадлежит переданному пользователю, 403 код
+        """
+        if account.user_id != owner.id:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "It's not your account")
+
+    async def _get_account_orm_or_404(self, external_id: int, db: AsyncDBSession) -> Account:
+        return await get_or_404(
+            select(Account).where(Account.external_id == external_id),
+            f"Account by external_id {external_id} does not exists",
+            db
+        )
+
+    async def get_account_or_404(self, external_id: int, owner: ExistsUser, db: AsyncDBSession) -> AccountRead:
+        """
+        Raises:
+            Http404: Аккаунт не существует
+            HTTPException: Аккаунт не принадлежит переданному пользователю, 403 код
+        """
+        account = await self._get_account_orm_or_404(external_id, db)
+        self._assert_account_belong_to_user(account, owner)
+        return AccountRead.model_validate(account, from_attributes=True)
+
+    async def get_account_payments(self, external_id: int, owner: ExistsUser, db: AsyncDBSession) -> list[PaymentRead]:
+        """
+        Raises:
+            Http404: Аккаунт не существует
+            HTTPException: Аккаунт не принадлежит переданному пользователю, 403 код
+        """
+        account = await self._get_account_orm_or_404(external_id, db)
+        self._assert_account_belong_to_user(account, owner)
+
+        stmt = select(Payment).where(Payment.account == account)
+        return list(
+            PaymentRead.model_validate(p, from_attributes=True)
+            for p in await db.scalars(stmt)
+        )
+
 ### Deps ###
 @AppScopeDependency
-def get_payment_service() -> PaymentService:
-    return PaymentService()
+def get_account_service(user_service: UserService = Depends(get_user_service)) -> AccountService:
+    return AccountService(
+        user_service = user_service
+    )

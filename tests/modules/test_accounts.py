@@ -1,9 +1,9 @@
-from app.modules.accounts import PaymentService, PaymentWebhookData
+from app.modules.accounts import AccountService, PaymentWebhookData
 
 
 class TestPaymentService:
     def setup_method(self) -> None:
-        self.service = PaymentService()
+        self.service = AccountService()
 
     def test_verify_webhook_signature(self):
         SECRET_KEY = 'gfdmhghif38yrf9ew0jkf32'

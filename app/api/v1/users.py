@@ -1,39 +1,46 @@
-from sqlalchemy import select
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Path
 
-from app.modules.accounts import AccountRead
-from app.modules.user     import User, UserRead, UserService, get_user_service, get_current_user
-from app.core.database    import get_async_db_session, AsyncDBSession
+from app.modules.accounts import AccountRead, PaymentRead, AccountService, get_account_service
+from app.modules.user     import UserRead, get_current_user
+from app.core.database    import get_db, AsyncDBSession
 
 
-router = APIRouter(prefix='/users', tags=['user'])
+router = APIRouter(
+    prefix='/users',
+    tags=['user'],
+    dependencies=[Depends(get_current_user)]
+)
 
-# $filter = *{attrs for filtering}
-# GET   /me                                (req: user)
-# GET   /me/accounts                       (req: user)
-# GET   /me/accounts/{id}                  (req: user)
-# GET   /me/accounts/{id}/payments?$filter (req: user)
+# $fsp = $filter + $sort + $pagination
+# GET   /me                            (req: user)
+# GET   /me/accounts                   (req: user)
+# GET   /me/accounts/{id}              (req: user)
+# GET   /me/accounts/{id}/payments?$fp (req: user)
 
-@router.get('/me', response_model=UserRead)
-async def get_me(curr_user: UserRead = Depends(get_current_user)):
+@router.get('/me')
+async def get_me(curr_user: UserRead = Depends(get_current_user)) -> UserRead:
     return curr_user
 
-@router.get('/me/accounts', response_model=list[AccountRead])
+@router.get('/me/accounts')
 async def get_my_accounts_list(
         curr_user: UserRead = Depends(get_current_user),
-        service: UserService = Depends(get_user_service),
-        db: AsyncDBSession = Depends(get_async_db_session)
-    ):
+        service: AccountService = Depends(get_account_service),
+        db: AsyncDBSession = Depends(get_db),
+    ) -> list[AccountRead]:
+    return await service.get_user_accounts(curr_user, db)
 
-    return list(
-        AccountRead.model_validate(acc, from_attributes=True)
-        for acc in await service.get_user_accounts(curr_user.id, db)
-    )
-
-@router.get('/me/accounts/{id}', response_model=AccountRead)
-async def get_my_account_detail(id: int, user: UserRead = Depends(get_current_user)):
-    raise NotImplementedError
+@router.get('/me/accounts/{id}')
+async def get_my_account_detail(
+        account_id: int = Path(alias='id'),
+        service: AccountService = Depends(get_account_service),
+        curr_user: UserRead = Depends(get_current_user),
+        db: AsyncDBSession = Depends(get_db),
+    ) -> AccountRead:
+    return await service.get_account_or_404(account_id, curr_user, db)
 
 @router.get('/me/accounts/{id}/payments')
-async def get_my_account_payments(id: int, user: UserRead = Depends(get_current_user)):
+async def get_my_account_payments(
+        account_id: int = Path(alias='id'),
+        curr_user: UserRead = Depends(get_current_user),
+    ) -> list[PaymentRead]:
     raise NotImplementedError

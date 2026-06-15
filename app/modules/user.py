@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING, Protocol
 from enum   import StrEnum
 
 from sqlalchemy.orm import relationship, Mapped, mapped_column
@@ -66,7 +66,12 @@ class User(Base):
     # special models for it (if needs dynamically roles). This is not
     # necessary now and will be over-engineering.
 
-### Schemas ###
+### Schemas & Protocols ###
+class ExistsUser(Protocol):
+    """Этот пользователь точно существует (обёртка над id для получения через аргументы)"""
+    # Создал, чтобы не указывать везде UserRead
+    id: int
+
 class UserRead(BaseModel):
     id: int
     email: str
@@ -82,15 +87,13 @@ class UserCreate(BaseModel):
 
 ### Services ###
 class UserService:
-    async def get_user_or_404(self, user_id: int, db: AsyncDBSession) -> User:
-        return await get_or_404(
+    async def get_user_or_404(self, user_id: int, db: AsyncDBSession) -> UserRead:
+        user = await get_or_404(
             select(User).where(User.id == user_id),
             f"User by id {user_id} does not exists",
             db
         )
-
-    async def get_user_accounts(self, user_id: int, db: AsyncDBSession) -> list[Account]:
-        return await db.scalar(select(User.accounts).where(User.id == user_id)) or []
+        return UserRead.model_validate(user, from_attributes=True)
 
 ### Deps ###
 @AppScopeDependency

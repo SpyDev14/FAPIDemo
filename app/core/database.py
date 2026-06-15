@@ -44,6 +44,6 @@ _async_session_maker = async_sessionmaker(
 AsyncDBSession: TypeAlias = _AsyncSession
 """Для реимпорта под аннотации"""
 
-async def get_async_db_session() -> AsyncGenerator[AsyncDBSession, None]:
+async def get_db() -> AsyncGenerator[AsyncDBSession, None]:
     async with _async_session_maker() as session:
         yield session
