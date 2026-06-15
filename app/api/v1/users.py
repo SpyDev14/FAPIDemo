@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Path
 
 from app.modules.accounts import AccountRead, PaymentRead, AccountService, get_account_service
-from app.modules.user     import UserRead, get_current_user
+from app.modules.users     import UserRead, get_current_user
 from app.core.database    import get_db, AsyncDBSession
 
 

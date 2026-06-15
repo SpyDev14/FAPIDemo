@@ -3,7 +3,7 @@ from dataclasses import dataclass, astuple
 from fastapi import Depends, Request
 
 from app.utils.fastapi.deps import AppScopeDependency
-from app.modules.user       import User
+from app.modules.users       import User
 
 
 AccessToken = str

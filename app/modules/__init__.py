@@ -1,3 +1,6 @@
+from app.modules import users
+
+
 def init_all_models_for_metadata():
     """
     Импортирует все модули с SQLAlchemy моделями, тем самым добавляя их в `Base.metadata`.
@@ -11,5 +14,4 @@ def init_all_models_for_metadata():
     # существующие файлы и как-то это нормально коммитить
     from app.modules import (
         accounts,
-        user,
     )
