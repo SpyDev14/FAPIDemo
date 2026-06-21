@@ -6,11 +6,12 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "fastapi[all]>=0.136.3",
-    "sqlalchemy[postgresql-asyncpg]>=2.0.50",
+    "sqlalchemy[postgresql-asyncpg]>=2.0.51",
     "alembic>=1.18.4",
     "pwdlib[argon2]>=0.3.0",
-    "fastapi-filter>=3.0.0",
-    "fastapi-pagination>=0.15.14",
+    "email-validator>=2.3.0",
+    "fastapi-fsp>=0.6.0",
+    "pyjwt>=2.13.0",
 ]
 
 [dependency-groups]

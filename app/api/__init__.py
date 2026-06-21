@@ -22,6 +22,7 @@ include_routers(api_router, [
 # POST  /api/v1/admin/users                                     (req: admin)
 # GET   /api/v1/admin/users/{id}                                (req: admin)
 # PATCH /api/v1/admin/users/{id}                                (req: admin)
+# DEL   /api/v1/admin/users/{id}                                (req: admin)
 # GET   /api/v1/admin/users/{id}/accounts?$ordering,$pagination (req: admin)
 # GET   /api/v1/admin/users/{id}/accounts/{id}                  (req: admin)
 # GET   /api/v1/admin/users/{id}/accounts/{id}/payments?$filter (req: admin)

@@ -1,15 +1,16 @@
 from typing import TYPE_CHECKING, Protocol
-from enum   import StrEnum
+from enum import StrEnum
 
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-from sqlalchemy     import String, Enum, select
-from pydantic       import BaseModel
-from fastapi        import Depends
+from sqlalchemy import String, Enum, select
+from pydantic import BaseModel, Field, EmailStr
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi import Depends, HTTPException
 
 from app.utils.orm.relationship_cascade import ALL_AND_DELETE_ORPHAN
-from app.utils.orm.shortcuts            import get_or_404
-from app.utils.fastapi.deps             import AppScopeDependency
-from app.core.database                  import AsyncDBSession, Base
+from app.utils.orm.shortcuts import get_or_404
+from app.utils.fastapi.deps import AppScopeDependency
+from app.core.database import AsyncDBSession, Base, get_db
 
 if TYPE_CHECKING:
     from app.modules.accounts import Account
@@ -35,6 +36,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True)
     hashed_password: Mapped[str] = mapped_column(String(255)) # TODO: Change VARCHAR size
     full_name: Mapped[str] = mapped_column(String(255))
+    is_active: Mapped[bool] = mapped_column(default=True)
 
     # I choose enum instead bool flag because it's more
     # flexible for future extending without over-engineering
@@ -68,22 +70,22 @@ class User(Base):
 
 ### Schemas & Protocols ###
 class ExistsUser(Protocol):
-    """Этот пользователь точно существует (обёртка над id для получения через аргументы)"""
+    """Этот пользователь точно существует. По сути, обёртка над id для получения через аргументы"""
     # Создал, чтобы не указывать везде UserRead
     id: int
 
 class UserRead(BaseModel):
     id: int
-    email: str
+    email: EmailStr
     full_name: str
 
 class UserUpdate(BaseModel):
-    full_name: str
+    full_name: str | None = Field(default=None, max_length=255)
 
 class UserCreate(BaseModel):
-    email: str
-    full_name: str
-    password: str
+    email: EmailStr = Field(max_length=255)
+    full_name: str = Field(max_length=255)
+    password: str = Field(min_length=8)
 
 ### Services ###
 class UserService:
@@ -97,7 +99,7 @@ class UserService:
 
 ### Deps ###
 @AppScopeDependency
-def get_user_service():
+def get_user_service() -> UserService:
     return UserService()
 
 async def get_current_user() -> UserRead:
