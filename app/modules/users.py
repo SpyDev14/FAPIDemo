@@ -5,12 +5,13 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy import String, Enum, select
 from pydantic import BaseModel, Field, EmailStr
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, status
 
 from app.utils.orm.relationship_cascade import ALL_AND_DELETE_ORPHAN
 from app.utils.orm.shortcuts import get_or_404
 from app.utils.fastapi.deps import AppScopeDependency
 from app.core.database import AsyncDBSession, Base, get_db
+from app.core.security import try_decode_token
 
 if TYPE_CHECKING:
     from app.modules.accounts import Account
@@ -90,6 +91,7 @@ class UserCreate(BaseModel):
 ### Services ###
 class UserService:
     async def get_user_or_404(self, user_id: int, db: AsyncDBSession) -> UserRead:
+        # TODO: use db.get method for cache using!!!!
         user = await get_or_404(
             select(User).where(User.id == user_id),
             f"User by id {user_id} does not exists",
@@ -98,12 +100,32 @@ class UserService:
         return UserRead.model_validate(user, from_attributes=True)
 
 ### Deps ###
+# TODO: Подумать над переходам на state-ful экземпляры сервисов с привязанной db.
 @AppScopeDependency
 def get_user_service() -> UserService:
     return UserService()
 
-async def get_current_user() -> UserRead:
-    raise NotImplementedError()
+async def _get_current_user_orm(
+        credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer()),
+        db: AsyncDBSession = Depends(get_db)
+    ) -> User:
+    token = credentials.credentials
+    success, payload, error = try_decode_token(token)
 
-async def get_current_admin(user: UserRead = Depends(get_current_user)) -> UserRead:
-    raise NotImplementedError()
+    # 401 - unauthorized
+    if payload is None or 'user_id' not in payload:
+        raise HTTPException(401, 'Invalid auth token')
+
+    user = await db.get(User, payload['user_id'])
+    if user is None or not user.is_active:
+        raise HTTPException(401, "invalid or inactive user")
+
+    return user
+
+async def get_current_user(user: User = Depends(_get_current_user_orm)) -> UserRead:
+    return UserRead.model_validate(user, from_attributes=True)
+
+async def get_current_admin(user: User = Depends(_get_current_user_orm)) -> UserRead:
+    if not user.is_admin:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "You don't have admin rights")
+    return UserRead.model_validate(user, from_attributes=True)
