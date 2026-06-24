@@ -1,9 +1,9 @@
 from typing import AsyncGenerator, TypeAlias
-from uuid   import UUID
+from uuid import UUID
 
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession as _AsyncSession
-from sqlalchemy.orm         import Mapped, mapped_column, DeclarativeBase
-from sqlalchemy             import BigInteger, UUID as SQL_UUID
+from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase
+from sqlalchemy import BigInteger, UUID as SQL_UUID
 
 from app.core.config import settings
 

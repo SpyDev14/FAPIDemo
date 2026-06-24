@@ -4,8 +4,8 @@ from sqlalchemy import engine_from_config, pool
 from alembic import context
 
 from app.core.database import Base
-from app.core.config   import settings, ALEMBIC_LOGGING_CONF
-from app.modules       import init_all_models_for_metadata
+from app.core.config import settings, ALEMBIC_LOGGING_CONF
+from app.modules import init_all_models_for_metadata
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

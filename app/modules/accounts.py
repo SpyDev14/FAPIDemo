@@ -1,6 +1,6 @@
 from datetime import datetime
-from decimal  import Decimal
-from uuid     import UUID
+from decimal import Decimal
+from uuid import UUID
 import hashlib, hmac, logging
 
 from sqlalchemy.exc import IntegrityError
@@ -13,12 +13,12 @@ from pydantic import BaseModel, Field
 from fastapi import Depends, status, HTTPException
 
 from app.utils.orm.relationship_cascade import ALL_AND_DELETE_ORPHAN
-from app.utils.orm.fk_on_delete         import CASCADE
-from app.utils.orm.shortcuts            import get_or_404, get_or_create
-from app.utils.fastapi.deps             import AppScopeDependency
-from app.modules.users                   import ExistsUser, User, UserService, get_user_service
-from app.core.database                  import Base, AsyncDBSession
-from app.core.config                    import settings
+from app.utils.orm.fk_on_delete import CASCADE
+from app.utils.orm.shortcuts import get_or_404, get_or_create
+from app.utils.fastapi.deps import AppScopeDependency
+from app.modules.users import ExistsUser, User, UserService, get_user_service
+from app.core.database import Base, AsyncDBSession
+from app.core.config import settings
 
 _logger = logging.getLogger(__name__)
 

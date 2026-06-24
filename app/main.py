@@ -1,8 +1,8 @@
 from fastapi.responses import RedirectResponse
-from fastapi           import FastAPI, Response
+from fastapi import FastAPI, Response
 
 from app.core.config import settings, setup_logging
-from app.api         import api_router
+from app.api import api_router
 
 app = FastAPI(
     debug=settings.DEBUG,

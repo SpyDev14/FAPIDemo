@@ -1,9 +1,9 @@
 from datetime import timedelta
-from pathlib  import Path
+from pathlib import Path
 import logging.config
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic          import field_validator, ValidationInfo
+from pydantic import field_validator, ValidationInfo
 
 from app.utils.logging import filters
 

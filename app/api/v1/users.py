@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, Path
 
 from app.modules.accounts import AccountRead, PaymentRead, AccountService, get_account_service
-from app.modules.users    import UserRead
-from app.modules.auth     import get_current_user
-from app.core.database    import get_db, AsyncDBSession
+from app.modules.users import UserRead
+from app.modules.auth import get_current_user
+from app.core.database import get_db, AsyncDBSession
 
 
 router = APIRouter(

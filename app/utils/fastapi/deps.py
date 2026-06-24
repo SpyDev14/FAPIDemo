@@ -1,5 +1,5 @@
 from functools import cache
-from typing    import Callable
+from typing import Callable
 
 # NOTE: Can grow into class in the future
 # func[T, **P] equals to _T = TypeVar('_T); _P = ParamSpec('_P'); but only for this func scope

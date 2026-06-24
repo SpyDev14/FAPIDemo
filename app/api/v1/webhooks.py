@@ -3,7 +3,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends
 
 from app.modules.accounts import PaymentWebhookData, AccountService, get_account_service
-from app.core.database    import get_db, AsyncDBSession
+from app.core.database import get_db, AsyncDBSession
 
 router = APIRouter(prefix='/webhooks', tags=['webhooks'])
 
