@@ -17,7 +17,7 @@ from app.utils.orm.fk_on_delete import CASCADE
 from app.utils.orm.shortcuts import get_or_404, get_or_create
 from app.utils.fastapi.deps import AppScopeDependency
 from app.modules.users import ExistsUser, User, UserService, get_user_service
-from app.core.database import Base, AsyncDBSession
+from app.core.database import Base, AsyncDBSession, get_db
 from app.core.config import settings
 
 _logger = logging.getLogger(__name__)
@@ -87,7 +87,8 @@ class PaymentWebhookData(BaseModel):
 
 ### Services ###
 class AccountService:
-    def __init__(self, user_service: UserService):
+    def __init__(self, db: AsyncDBSession, user_service: UserService):
+        self._db = db
         self._user_service = user_service
 
     def _compute_webhook_signature(self, data: PaymentWebhookData, secret_key: str):
@@ -108,25 +109,25 @@ class AccountService:
         return hmac.compare_digest(expected_signature, data.signature)
 
     async def _get_or_create_account(
-            self, external_id: int, user: ExistsUser, db: AsyncDBSession
+            self, external_id: int, user: ExistsUser
         ) -> tuple[Account, bool]:
         return await get_or_create(
             select(Account).where(Account.user_id == user.id),
             Account(user_id = user.id, external_id = external_id),
-            db
+            self._db
         )
 
-    async def _change_account_balance(self, account_id: int, amount: int, db: AsyncDBSession):
+    async def _change_account_balance(self, account_id: int, amount: int):
         """
         Изменяет баланс по переданному id на переданную сумму. Сумма (`amount`) **может быть отрицательной**.
         """
-        await db.execute(
+        await self._db.execute(
             update(Account)
             .where(Account.id == account_id)
             .values(balance = Account.balance + amount) # Атомарное изменение баланса чтобы из-за RC деньги не исчезли
         )
 
-    async def try_process_payment(self, data: PaymentWebhookData, db: AsyncDBSession) -> bool:
+    async def try_process_payment(self, data: PaymentWebhookData) -> bool:
         """
         Возвращает `True`, если было обработано и `False`, если оплата уже была обработана.
 
@@ -137,22 +138,23 @@ class AccountService:
             Http404: Пользователь не найден
             HTTPException: Сигнатура сфальсифицирована
         """
+
         if not self._verify_webhook_signature(data):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f'Signature is fake')
 
-        user = await self._user_service.get_user_or_404(data.user_id, db)
-        account, _ = await self._get_or_create_account(data.account_id, user, db)
+        user = await self._user_service.get_user_or_404(data.user_id)
+        account, _ = await self._get_or_create_account(data.account_id, user)
 
         # Если понадобится вложенный begin (begin_nested, который SAVEPOINT) - создам отдельную функцию
-        await db.rollback()
+        await self._db.rollback()
         try:
-            async with db.begin(): # Выполнит COMMIT, если всё успешно, иначе ROLLBACK
-                db.add(Payment(
+            async with self._db.begin(): # Выполнит COMMIT, если всё успешно, иначе ROLLBACK
+                self._db.add(Payment(
                     transaction_id = data.transaction_id,
                     amount = data.amount,
                     account = account,
                 ))
-                await self._change_account_balance(account.id, data.amount, db)
+                await self._change_account_balance(account.id, data.amount)
                 return True
         except IntegrityError:
             # будет вызвано при попытке создания дубликата т.к transaction_id должно
@@ -160,10 +162,10 @@ class AccountService:
             _logger.info("Attempt to apply already applied payment. Attempt ignored.")
             return False
 
-    async def get_user_accounts(self, user: ExistsUser, db: AsyncDBSession) -> list[AccountRead]:
+    async def get_user_accounts(self, user: ExistsUser) -> list[AccountRead]:
         return list(
             AccountRead.model_validate(acc, from_attributes=True) for acc in
-            await db.scalar(select(User.accounts).where(User.id == user.id)) or []
+            await self._db.scalar(select(User.accounts).where(User.id == user.id)) or []
         )
 
     def _assert_account_belong_to_user(self, account: Account, owner: ExistsUser):
@@ -175,41 +177,44 @@ class AccountService:
         if account.user_id != owner.id:
             raise HTTPException(status.HTTP_403_FORBIDDEN, "It's not your account")
 
-    async def _get_account_orm_or_404(self, external_id: int, db: AsyncDBSession) -> Account:
+    async def _get_account_orm_or_404(self, external_id: int) -> Account:
         return await get_or_404(
             select(Account).where(Account.external_id == external_id),
             f"Account by external_id {external_id} does not exists",
-            db
+            self._db
         )
 
-    async def get_account_or_404(self, external_id: int, owner: ExistsUser, db: AsyncDBSession) -> AccountRead:
+    async def get_account_or_404(self, external_id: int, owner: ExistsUser) -> AccountRead:
         """
         Raises:
             Http404: Аккаунт не существует
             HTTPException: Аккаунт не принадлежит переданному пользователю, 403 код
         """
-        account = await self._get_account_orm_or_404(external_id, db)
+        account = await self._get_account_orm_or_404(external_id)
         self._assert_account_belong_to_user(account, owner)
         return AccountRead.model_validate(account, from_attributes=True)
 
-    async def get_account_payments(self, external_id: int, owner: ExistsUser, db: AsyncDBSession) -> list[PaymentRead]:
+    async def get_account_payments(self, external_id: int, owner: ExistsUser) -> list[PaymentRead]:
         """
         Raises:
             Http404: Аккаунт не существует
             HTTPException: Аккаунт не принадлежит переданному пользователю, 403 код
         """
-        account = await self._get_account_orm_or_404(external_id, db)
+        account = await self._get_account_orm_or_404(external_id)
         self._assert_account_belong_to_user(account, owner)
 
         stmt = select(Payment).where(Payment.account == account)
         return list(
             PaymentRead.model_validate(p, from_attributes=True)
-            for p in await db.scalars(stmt)
+            for p in await self._db.scalars(stmt)
         )
 
 ### Deps ###
-@AppScopeDependency
-def get_account_service(user_service: UserService = Depends(get_user_service)) -> AccountService:
+def get_account_service(
+        db: AsyncDBSession = Depends(get_db),
+        user_service: UserService = Depends(get_user_service),
+    ) -> AccountService:
     return AccountService(
+        db = db,
         user_service = user_service
     )

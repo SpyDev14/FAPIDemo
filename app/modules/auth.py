@@ -3,7 +3,6 @@ from pydantic import BaseModel
 from fastapi import Depends, HTTPException, status
 from jwt import InvalidTokenError, ExpiredSignatureError
 
-from app.utils.fastapi.deps import AppScopeDependency
 from app.modules.users import User, UserRead
 from app.core.database import AsyncDBSession, get_db
 from app.core.security import decode_token
@@ -22,7 +21,6 @@ class AuthService:
         raise NotImplementedError
 
 ### Deps ###
-@AppScopeDependency
 def get_auth_service():
     return AuthService()
 

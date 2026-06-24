@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Protocol
 from enum import StrEnum
 
+from fastapi import Depends
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy import String, Enum, select
 from pydantic import BaseModel, Field, EmailStr
@@ -8,7 +9,7 @@ from pydantic import BaseModel, Field, EmailStr
 from app.utils.orm.relationship_cascade import ALL_AND_DELETE_ORPHAN
 from app.utils.orm.shortcuts import get_or_404
 from app.utils.fastapi.deps import AppScopeDependency
-from app.core.database import AsyncDBSession, Base
+from app.core.database import AsyncDBSession, Base, get_db
 
 if TYPE_CHECKING:
     from app.modules.accounts import Account
@@ -87,17 +88,18 @@ class UserCreate(BaseModel):
 
 ### Services ###
 class UserService:
-    async def get_user_or_404(self, user_id: int, db: AsyncDBSession) -> UserRead:
+    def __init__(self, db: AsyncDBSession):
+        self._db = db
+
+    async def get_user_or_404(self, user_id: int) -> UserRead:
         # TODO: use db.get method for cache using!!!!
         user = await get_or_404(
             select(User).where(User.id == user_id),
             f"User by id {user_id} does not exists",
-            db
+            self._db
         )
         return UserRead.model_validate(user, from_attributes=True)
 
 ### Deps ###
-# TODO: Подумать над переходам на state-ful экземпляры сервисов с привязанной db.
-@AppScopeDependency
-def get_user_service() -> UserService:
-    return UserService()
+def get_user_service(db: AsyncDBSession = Depends(get_db)) -> UserService:
+    return UserService(db = db)
