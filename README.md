@@ -17,6 +17,23 @@ app/
 
 Слоя репозиториев нет, так как для такого небольшого проекта он излишен.
 
+# ...
+### Правила сортировки импортов
+1. Базовый порядок
+  - Стандартная библиотека
+  - Сторонние зависимости
+  - Приложение (`app`)
+    - utils
+    - modules
+    - cores
+  - TYPE_CHECKING импорты внизу и к ним применяется такая же сортировка
+2. Cамые длинные строки вверху, строки из одного подмодуля располагаются друг за другом, игнорируя длину. В сортировке по длине для равных строк приоритет отдаётся тем, чей подмодуль занимает больше места (`some.superbig` < `superbig.some`). Пример:
+  - `from app.utils.fastapi.deps1234 import AppScopeDependency`
+  - `from app.utils.fastapi.ok import SomethingCrazy`
+  - `from app.utils.superbig.some import some`
+  - `from app.utils.some.superbig import some`
+  - `from app.modules.users import User, UserRead`
+
 # ТЗ
 Необходимо реализовать асинхронное веб приложение в парадигме REST API.
 
