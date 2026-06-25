@@ -14,15 +14,22 @@ class AuthTokens(BaseModel):
 
 ### Services ###
 class AuthService:
-    def login(self, email: str, password: str) -> AuthTokens:
+    def __init__(self, db: AsyncDBSession):
+        self._db = db
+
+    async def login(self, email: str, password: str) -> AuthTokens | None:
+        """
+        Returns:
+            AuthTokens если успешно, None если неверен логин или пароль
+        """
         raise NotImplementedError
 
-    def refresh_token(self, refresh_token: str) -> AuthTokens:
+    async def refresh_token(self, refresh_token: str) -> AuthTokens:
         raise NotImplementedError
 
 ### Deps ###
-def get_auth_service():
-    return AuthService()
+def get_auth_service(db: AsyncDBSession = Depends(get_db)):
+    return AuthService(db = db)
 
 async def _get_current_user_orm(
         credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer()),
