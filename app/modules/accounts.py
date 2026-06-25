@@ -91,6 +91,11 @@ class AccountService:
         self._db = db
         self._user_service = user_service
 
+    # TODO: Заменить аргумент data на Iterable[object], преобразовывать в sorted(Iterable[str])
+    # Возможно. А возможно и оставить. Для тестов такое изменение было бы удобней т.к мы отделим
+    # правила от конкретных полей, а также прибавим смысла методу _verify
+    # Да, определённо нужно это сделать, так как тут мы убираем signature из data_dict, т.е завязываемся на поля data
+    # для такого есть метод _verify
     def _compute_webhook_signature(self, data: PaymentWebhookData, secret_key: str):
         # В сторонней системе подпись генерируется как SHA256 хеш строки,
         # полученной путём конкатенации строковых представлений всех значений,

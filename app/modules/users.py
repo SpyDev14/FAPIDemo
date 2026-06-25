@@ -67,6 +67,7 @@ class User(Base):
     # necessary now and will be over-engineering.
 
 ### Schemas & Protocols ###
+# TODO: Может создать generic Exists[T: Base]? Т.е Exists[User]
 class ExistsUser(Protocol):
     """Этот пользователь точно существует. По сути, обёртка над id для получения через аргументы"""
     # Создал, чтобы не указывать везде UserRead
