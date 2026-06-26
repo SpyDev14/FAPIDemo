@@ -9,7 +9,7 @@
 
 from fastapi import APIRouter
 
-from app.utils.routers import include_routers
+from app.utils.fastapi.routers import include_routers
 from . import admin, users, webhooks
 
 router = APIRouter(
