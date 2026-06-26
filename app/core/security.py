@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta, timezone
-import hashlib, hmac
 
 from pwdlib.hashers.argon2 import Argon2Hasher
 from pwdlib import PasswordHash
@@ -39,8 +38,3 @@ def decode_token(token: str) -> dict[str, object]:
         payload | None, error msg
     """
     return jwt.decode(token, _SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
-
-### Signature checking ###
-def check_string_signature(string: str, signature: str) -> bool:
-    expected = hashlib.sha256((string + _SECRET_KEY).encode()).hexdigest()
-    return hmac.compare_digest(signature, expected)
