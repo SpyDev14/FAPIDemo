@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Protocol, Final, Any
+from typing import TYPE_CHECKING
 from enum import StrEnum
 
 from fastapi import Depends
@@ -66,19 +66,11 @@ class User(Base):
     # special models for it (if needs dynamically roles). This is not
     # necessary now and will be over-engineering.
 
-### Schemas & Protocols ###
-# TODO: Может создать generic Exists[T: Base]? Т.е Exists[User]
-class ExistsUser(Protocol):
-    """Этот пользователь точно существует. По сути, обёртка над id для получения через аргументы"""
-    # Создал, чтобы не указывать везде UserRead | User
-    # стат. анализаторы, не позволяют указать что у объекта просто есть атрибут id возвращающий int,
-    # для него подходит только строгое равенство, что аннотация - это int, а не что атрибут id возвращает int
-    # И где тут гибкость???
-    id: Final[int | Any]
+### Types ###
+# добавил, чтобы не передавать сырой user_id там, где пользователь точно должен существовать
+type ExistsUser = User | UserRead
 
-# TODO: Вот такое нам надо
-type _ExistsUser = User | UserRead
-
+### Schemas ###
 class UserRead(BaseModel):
     id: int
     email: EmailStr
