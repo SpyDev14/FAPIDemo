@@ -76,6 +76,9 @@ class ExistsUser(Protocol):
     # И где тут гибкость???
     id: Final[int | Any]
 
+# TODO: Вот такое нам надо
+type _ExistsUser = User | UserRead
+
 class UserRead(BaseModel):
     id: int
     email: EmailStr
