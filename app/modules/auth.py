@@ -15,6 +15,22 @@ class AuthTokens(BaseModel):
     access: str
     refresh: str
 
+_USER_ID_KEY = 'user_id'
+
+class TokenPayload(BaseModel):
+    user_id: int
+
+def _decode_auth_token(token: str) -> TokenPayload:
+    try:
+        payload = try_decode_jwt_token(token)
+    except ExpiredSignatureError:
+        raise HTTPException(401, 'Auth token is expired')
+    except InvalidTokenError:
+        payload = None
+
+    if payload is None or 'user_id' not in payload:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, 'Invalid auth token')
+
 ### Services ###
 class AuthService:
     def __init__(self, db: AsyncDBSession):
@@ -22,7 +38,7 @@ class AuthService:
 
     @staticmethod
     def _create_auth_tokens(user: ExistsUser) -> AuthTokens:
-        payload = {'user_id': user.id}
+        payload = {_USER_ID_KEY: user.id}
         return AuthTokens(
             refresh=encode_jwt_token(payload, settings.JWT_REFRESH_TOKEN_LIFETIME),
             access=encode_jwt_token(payload, settings.JWT_ACCESS_TOKEN_LIFETIME),
@@ -42,7 +58,24 @@ class AuthService:
         return self._create_auth_tokens(user)
 
     async def refresh_token(self, refresh_token: str) -> AuthTokens:
-        raise NotImplementedError
+        """
+        Raises:
+            HTTPException - Токен истёк или не валиден, 401 код
+        """
+        payload, error = try_decode_jwt_token(refresh_token)
+
+        TOKEN_IS_INVALID_MSG = 'Auth token is invalid'
+        if error is not None:
+            msg = (
+                'Auth token is expired, refresh them by refresh token'
+                if isinstance(error, jwt.ExpiredSignatureError)
+                else TOKEN_IS_INVALID_MSG
+            )
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, msg)
+
+        if _USER_ID_KEY not in
+
+
 
 ### Deps ###
 def get_auth_service(db: AsyncDBSession = Depends(get_db)):
@@ -53,18 +86,9 @@ async def _get_current_user_orm(
         db: AsyncDBSession = Depends(get_db)
     ) -> User:
     token = credentials.credentials
+    payload = _decode_auth_token(token)
+    user = await db.get(User, payload.user_id)
 
-    try:
-        payload = try_decode_jwt_token(token)
-    except ExpiredSignatureError:
-        raise HTTPException(401, 'Auth token is expired')
-    except InvalidTokenError:
-        payload = None
-
-    if payload is None or 'user_id' not in payload:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, 'Invalid auth token')
-
-    user = await db.get(User, payload['user_id'])
     if user is None or not user.is_active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User is inactive or not exists")
 
