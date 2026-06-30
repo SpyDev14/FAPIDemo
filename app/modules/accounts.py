@@ -131,10 +131,9 @@ class AccountService:
 
     async def try_process_payment(self, data: PaymentWebhookData) -> bool:
         """
-        Возвращает `True`, если было обработано и `False`, если оплата уже была обработана.
+        Возвращает `True`, если было обработано и `False`, если оплата **уже** была обработана.
 
-        ВАЖНО: вызывает rollback на текущей сессии, начинает **новую**
-        транзакцию (BEGIN), делает коммит в случае успеха.
+        ВАЖНО: начинает **новую** транзакцию (BEGIN), делает коммит в случае успеха.
 
         Raises:
             Http404: Пользователь не найден
@@ -148,7 +147,6 @@ class AccountService:
         account, _ = await self._get_or_create_account(data.account_id, user)
 
         # Если понадобится вложенный begin (begin_nested, который SAVEPOINT) - создам отдельную функцию
-        await self._db.rollback()
         try:
             async with self._db.begin(): # Выполнит COMMIT, если всё успешно, иначе ROLLBACK
                 self._db.add(Payment(
@@ -167,7 +165,7 @@ class AccountService:
     async def get_user_accounts(self, user: ExistsUser) -> list[AccountRead]:
         return list(
             AccountRead.model_validate(acc, from_attributes=True) for acc in
-            await self._db.scalar(select(User.accounts).where(User.id == user.id)) or []
+            await self._db.scalars(select(Account).where(Account.user_id == user.id))
         )
 
     def _assert_account_belong_to_user(self, account: Account, owner: ExistsUser):
