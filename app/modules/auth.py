@@ -7,7 +7,7 @@ from jwt import InvalidTokenError, ExpiredSignatureError
 from app.modules.users import ExistsUser, User, UserRead
 from app.core.exceptions import Http404
 from app.core.database import AsyncDBSession, get_db
-from app.core.security import decode_token, encode_jwt_token, verify_password
+from app.core.security import try_decode_jwt_token, encode_jwt_token, verify_password
 from app.core.config import settings
 
 
@@ -55,7 +55,7 @@ async def _get_current_user_orm(
     token = credentials.credentials
 
     try:
-        payload = decode_token(token)
+        payload = try_decode_jwt_token(token)
     except ExpiredSignatureError:
         raise HTTPException(401, 'Auth token is expired')
     except InvalidTokenError:
