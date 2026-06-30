@@ -52,7 +52,7 @@ from fastapi import APIRouter
 #     fn include_routers(&mut self, routers: IntoIterator<Item = APIRouter>);
 # }
 # impl APIRouterExt for APIRouter {
-#     fn include_routers(&mut self, routers: IntoIterator<Item = APIRouter>) {
+#     fn include_routers(&mut self, routers: IntoIterator<Item = &APIRouter>) {
 #         for router in routers { self.include_router(router); }
 #     }
 # }

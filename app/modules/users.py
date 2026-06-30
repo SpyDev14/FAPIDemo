@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, Final, Any
 from enum import StrEnum
 
 from fastapi import Depends
@@ -70,8 +70,11 @@ class User(Base):
 # TODO: Может создать generic Exists[T: Base]? Т.е Exists[User]
 class ExistsUser(Protocol):
     """Этот пользователь точно существует. По сути, обёртка над id для получения через аргументы"""
-    # Создал, чтобы не указывать везде UserRead
-    id: int
+    # Создал, чтобы не указывать везде UserRead | User
+    # стат. анализаторы, не позволяют указать что у объекта просто есть атрибут id возвращающий int,
+    # для него подходит только строгое равенство, что аннотация - это int, а не что атрибут id возвращает int
+    # И где тут гибкость???
+    id: Final[int | Any]
 
 class UserRead(BaseModel):
     id: int

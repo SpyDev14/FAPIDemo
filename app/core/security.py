@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from typing import Mapping
 
 from pwdlib.hashers.argon2 import Argon2Hasher
 from pwdlib import PasswordHash
@@ -11,23 +12,19 @@ _SECRET_KEY = settings.SECRET_KEY
 
 ### Passwords ###
 def hash_password(password: str) -> str:
+    """Возвращает пароль в захешированном виде, готовом для проверки через verify_password."""
     return _pwd_context.hash(password)
 
-def check_password(plain_pass: str, hashed_pass: str) -> bool:
+def verify_password(plain_pass: str, hashed_pass: str) -> bool:
+    """Проверяет соответствие переданного чистого пароля захешированному"""
     return _pwd_context.verify(plain_pass, hashed_pass)
 
 ### JWT tokens ###
-def create_jwt_token(payload: dict[str, object], lifetime: timedelta) -> str:
-    payload = payload.copy()
-    expire: datetime = datetime.now(timezone.utc) + lifetime
-    payload['exp'] = expire
-    return jwt.encode(payload, _SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
-
-# def create_access_token(payload: dict[str, object]) -> str:
-#     return create_jwt_token(payload, settings.JWT_ACCESS_TOKEN_LIFETIME)
-
-# def create_refresh_token(payload: dict[str, object]) -> str:
-#     return create_jwt_token(payload, settings.JWT_REFRESH_TOKEN_LIFETIME)
+def encode_jwt_token(payload: Mapping[str, object], lifetime: timedelta) -> str:
+    data = dict(payload)
+    expire = datetime.now(timezone.utc) + lifetime
+    data['exp'] = expire
+    return jwt.encode(data, _SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 def decode_token(token: str) -> dict[str, object]:
     """

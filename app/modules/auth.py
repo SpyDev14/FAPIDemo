@@ -1,11 +1,14 @@
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel
 from fastapi import Depends, HTTPException, status
+from sqlalchemy import select
+from pydantic import BaseModel
 from jwt import InvalidTokenError, ExpiredSignatureError
 
-from app.modules.users import User, UserRead
+from app.modules.users import ExistsUser, User, UserRead
+from app.core.exceptions import Http404
 from app.core.database import AsyncDBSession, get_db
-from app.core.security import decode_token
+from app.core.security import decode_token, encode_jwt_token, verify_password
+from app.core.config import settings
 
 
 class AuthTokens(BaseModel):
@@ -17,12 +20,26 @@ class AuthService:
     def __init__(self, db: AsyncDBSession):
         self._db = db
 
-    async def login(self, email: str, password: str) -> AuthTokens | None:
+    @staticmethod
+    def _create_auth_tokens(user: ExistsUser) -> AuthTokens:
+        payload = {'user_id': user.id}
+        return AuthTokens(
+            refresh=encode_jwt_token(payload, settings.JWT_REFRESH_TOKEN_LIFETIME),
+            access=encode_jwt_token(payload, settings.JWT_ACCESS_TOKEN_LIFETIME),
+        )
+
+    async def login(self, email: str, password: str) -> AuthTokens:
         """
-        Returns:
-            AuthTokens если успешно, None если неверен логин или пароль
+        Raises:
+            Http404 - Пользователя с таким email не существует, либо пароль неверен
         """
-        raise NotImplementedError
+        user = await self._db.scalar(select(User).where(User.email == email))
+
+        # Не говорю что конкретно для безопасности
+        if user is None or not verify_password(password, user.hashed_password):
+            raise Http404("Wrong login or password")
+
+        return self._create_auth_tokens(user)
 
     async def refresh_token(self, refresh_token: str) -> AuthTokens:
         raise NotImplementedError
