@@ -13,7 +13,7 @@ from app.core.database import AsyncDBSession, Base, get_db
 if TYPE_CHECKING:
     from app.modules.accounts import Account
 
-### Models ###
+### MARK: Models
 class User(Base):
     __tablename__ = 'users'
 
@@ -34,7 +34,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True)
     hashed_password: Mapped[str] = mapped_column(String(255)) # TODO: Change VARCHAR size
     full_name: Mapped[str] = mapped_column(String(255))
-    is_active: Mapped[bool] = mapped_column(default=True)
+    is_active: Mapped[bool] = mapped_column(default=True) # TODO: make migration!!!
 
     # I choose enum instead bool flag because it's more
     # flexible for future extending without over-engineering
@@ -66,25 +66,27 @@ class User(Base):
     # special models for it (if needs dynamically roles). This is not
     # necessary now and will be over-engineering.
 
-### Types ###
+### MARK: Types
 # добавил, чтобы не передавать сырой user_id там, где пользователь точно должен существовать
 type ExistsUser = User | UserRead
 
-### Schemas ###
+### MARK: Schemas
 class UserRead(BaseModel):
     id: int
     email: EmailStr
     full_name: str
+    is_active: bool
 
 class UserUpdate(BaseModel):
     full_name: str | None = Field(default=None, max_length=255)
+    is_active: bool | None = Field(default=True)
 
 class UserCreate(BaseModel):
     email: EmailStr = Field(max_length=255)
     full_name: str = Field(max_length=255)
     password: str = Field(min_length=8)
 
-### Services ###
+### MARK: Services
 class UserService:
     def __init__(self, db: AsyncDBSession):
         self._db = db
@@ -93,6 +95,6 @@ class UserService:
         user = await get_by_id_or_404(User, user_id, self._db)
         return UserRead.model_validate(user, from_attributes=True)
 
-### Deps ###
+### MARK: Deps
 def get_user_service(db: AsyncDBSession = Depends(get_db)) -> UserService:
     return UserService(db = db)

@@ -22,7 +22,7 @@ from app.core.config import settings
 
 _logger = logging.getLogger(__name__)
 
-### Models ###
+### MARK: Models
 # Base.type_annotation_map было бы оверинженерингом для этого,
 # поэтому я выбрал простой алиас через переменную (чтобы была
 # согласованность)
@@ -67,13 +67,11 @@ class Payment(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),
                                                  server_default=func.now())
 
-### Schemas ###
-# [Account]
+### MARK: Schemas
 class AccountRead(BaseModel):
     id: int = Field(alias='external_id')
     balance: Decimal
 
-# [Payment]
 class PaymentRead(BaseModel):
     amount: Decimal
     created_at: datetime
@@ -85,7 +83,7 @@ class PaymentWebhookData(BaseModel):
     amount: int
     signature: str
 
-### Services ###
+### MARK: Services
 class AccountService:
     def __init__(self, db: AsyncDBSession, user_service: UserService):
         self._db = db
@@ -214,7 +212,7 @@ class AccountService:
             for p in await self._db.scalars(stmt)
         )
 
-### Deps ###
+### MARK: Deps
 def get_account_service(
         db: AsyncDBSession = Depends(get_db),
         user_service: UserService = Depends(get_user_service),

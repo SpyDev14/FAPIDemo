@@ -12,11 +12,12 @@ from app.core.database import AsyncDBSession, get_db
 from app.core.security import decode_jwt_token, encode_jwt_token, verify_password
 from app.core.config import settings
 
-
+### MARK: Schemas
 class AuthTokens(BaseModel):
     access: str
     refresh: str
 
+# Internal stuff
 class _TokenType(StrEnum):
     REFRESH = 'refresh'
     ACCESS = 'access'
@@ -35,15 +36,15 @@ def _decode_auth_token(token: str) -> _TokenPayload:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, 'Invalid auth token')
 
 def _create_auth_tokens(user: ExistsUser) -> AuthTokens:
-    access = _TokenPayload(user = user.id, type=_TokenType.ACCESS)
     refresh = _TokenPayload(user = user.id, type=_TokenType.REFRESH)
+    access  = _TokenPayload(user = user.id, type=_TokenType.ACCESS)
 
     return AuthTokens(
-        refresh=encode_jwt_token(refresh.model_dump(), settings.JWT_REFRESH_TOKEN_LIFETIME),
-        access=encode_jwt_token(access.model_dump(), settings.JWT_ACCESS_TOKEN_LIFETIME),
+        refresh=encode_jwt_token(refresh.model_dump(),settings.JWT_REFRESH_TOKEN_LIFETIME),
+        access =encode_jwt_token(access.model_dump(), settings.JWT_ACCESS_TOKEN_LIFETIME),
     )
 
-### Services ###
+### MARK: Services
 class AuthService:
     def __init__(self, db: AsyncDBSession):
         self._db = db
@@ -51,7 +52,7 @@ class AuthService:
     async def login(self, email: str, password: str) -> AuthTokens:
         """
         Raises:
-            Http404 - Пользователя с таким email не существует, либо пароль неверен
+            Http404: Неверен email или пароль (не уточняется)
         """
         user = await self._db.scalar(select(User).where(User.email == email))
 
@@ -64,12 +65,23 @@ class AuthService:
     async def refresh_token(self, refresh_token: str) -> AuthTokens:
         """
         Raises:
-            HTTPException - Токен истёк или не валиден, 401 код
+            HTTPException:
+                - Токен истёк или не валиден, 401 код
+                - Это не Refresh токен, 400 код
+                - Пользователь не найден или неактивен, 404 код
         """
         payload = _decode_auth_token(refresh_token)
-        raise NotImplementedError
+        if payload.type != _TokenType.REFRESH:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Awaited refresh token, got {payload.type}")
 
-### Deps ###
+        user = await self._db.get(User, payload.user)
+        if user is None or not user.is_active:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "User is inactive or not exists")
+
+        return _create_auth_tokens(user)
+
+
+### MARK: Deps
 def get_auth_service(db: AsyncDBSession = Depends(get_db)):
     return AuthService(db = db)
 
@@ -81,10 +93,9 @@ async def _get_current_user_orm(
     payload = _decode_auth_token(token)
 
     if payload.type != _TokenType.ACCESS:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, 'Given auth token is not access')
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, f"Awaited access auth token, got {payload.type}")
 
     user = await db.get(User, payload.user)
-
     if user is None or not user.is_active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User is inactive or not exists")
 
