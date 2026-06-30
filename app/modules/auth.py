@@ -6,7 +6,7 @@ from sqlalchemy import select
 from pydantic import BaseModel, ValidationError
 from jwt import InvalidTokenError, ExpiredSignatureError
 
-from app.modules.users import ExistsUser, User, UserRead
+from app.modules.users import ExistsUser, User, UserRead, UserService, get_user_service
 from app.core.exceptions import Http404
 from app.core.database import AsyncDBSession, get_db
 from app.core.security import decode_jwt_token, encode_jwt_token, verify_password
@@ -23,7 +23,7 @@ class _TokenType(StrEnum):
     ACCESS = 'access'
 
 class _TokenPayload(BaseModel):
-    user: int
+    user_id: int
     type: _TokenType
 
 def _decode_auth_token(token: str) -> _TokenPayload:
@@ -36,8 +36,8 @@ def _decode_auth_token(token: str) -> _TokenPayload:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, 'Invalid auth token')
 
 def _create_auth_tokens(user: ExistsUser) -> AuthTokens:
-    refresh = _TokenPayload(user = user.id, type=_TokenType.REFRESH)
-    access  = _TokenPayload(user = user.id, type=_TokenType.ACCESS)
+    refresh = _TokenPayload(user_id = user.id, type=_TokenType.REFRESH)
+    access  = _TokenPayload(user_id = user.id, type=_TokenType.ACCESS)
 
     return AuthTokens(
         refresh=encode_jwt_token(refresh.model_dump(),settings.JWT_REFRESH_TOKEN_LIFETIME),
@@ -46,8 +46,9 @@ def _create_auth_tokens(user: ExistsUser) -> AuthTokens:
 
 ### MARK: Services
 class AuthService:
-    def __init__(self, db: AsyncDBSession):
+    def __init__(self, db: AsyncDBSession, user_service: UserService):
         self._db = db
+        self._user_service = user_service
 
     async def login(self, email: str, password: str) -> AuthTokens:
         """
@@ -62,7 +63,7 @@ class AuthService:
 
         return _create_auth_tokens(user)
 
-    async def refresh_token(self, refresh_token: str) -> AuthTokens:
+    async def refresh_tokens(self, refresh_token: str) -> AuthTokens:
         """
         Raises:
             HTTPException:
@@ -74,20 +75,20 @@ class AuthService:
         if payload.type != _TokenType.REFRESH:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Awaited refresh token, got {payload.type}")
 
-        user = await self._db.get(User, payload.user)
-        if user is None or not user.is_active:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "User is inactive or not exists")
-
+        user = await self._user_service.get_active_user_orm_by_id_or_404(payload.user_id)
         return _create_auth_tokens(user)
 
 
 ### MARK: Deps
-def get_auth_service(db: AsyncDBSession = Depends(get_db)):
-    return AuthService(db = db)
+def get_auth_service(
+        db: AsyncDBSession = Depends(get_db),
+        user_service: UserService = Depends(get_user_service)
+    ):
+    return AuthService(db = db, user_service = user_service)
 
 async def _get_current_user_orm(
         credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer()),
-        db: AsyncDBSession = Depends(get_db)
+        user_service: UserService = Depends(get_user_service),
     ) -> User:
     token = credentials.credentials
     payload = _decode_auth_token(token)
@@ -95,10 +96,7 @@ async def _get_current_user_orm(
     if payload.type != _TokenType.ACCESS:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, f"Awaited access auth token, got {payload.type}")
 
-    user = await db.get(User, payload.user)
-    if user is None or not user.is_active:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User is inactive or not exists")
-
+    user = await user_service.get_active_user_orm_by_id_or_404(payload.user_id)
     return user
 
 async def get_current_user(user: User = Depends(_get_current_user_orm)) -> UserRead:

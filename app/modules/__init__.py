@@ -1,5 +1,3 @@
-from app.modules import users
-
 
 def init_all_models_for_metadata():
     """
@@ -12,6 +10,9 @@ def init_all_models_for_metadata():
     # самый `models`, если он есть. Но пока проект такой крошечный я не
     # вижу смысла в таком усложнении, плюс ещё нужно будет опять резать
     # существующие файлы и как-то это нормально коммитить
+    # TODO: заменить на автозагрузку
     from app.modules import (
         accounts,
+        users,
+        auth,
     )

@@ -14,8 +14,7 @@ from fastapi import Depends, status, HTTPException
 
 from app.utils.orm.relationship_cascade import ALL_AND_DELETE_ORPHAN
 from app.utils.orm.fk_on_delete import CASCADE
-from app.utils.orm.shortcuts import get_or_404, get_or_create
-from app.utils.fastapi.deps import AppScopeDependency
+from app.utils.orm.shortcuts import get_by_id_or_404, get_or_404, get_or_create
 from app.modules.users import ExistsUser, User, UserService, get_user_service
 from app.core.database import Base, AsyncDBSession, get_db
 from app.core.config import settings
@@ -108,7 +107,7 @@ class AccountService:
     def _verify_webhook_signature(self, data: PaymentWebhookData) -> bool:
         expected_signature = self._compute_webhook_signature(data, settings.SECRET_KEY)
 
-        # NOTE: Используйте hmac.compare вместо `==` потому-что он защищён от тайминг-атак
+        # NOTE: hmac.compare защищён от тайминг-атак в отличии от `==`
         return hmac.compare_digest(expected_signature, data.signature)
 
     async def _get_or_create_account(
@@ -145,7 +144,7 @@ class AccountService:
         if not self._verify_webhook_signature(data):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f'Signature is fake')
 
-        user = await self._user_service.get_user_or_404(data.user_id)
+        user = await get_by_id_or_404(User, data.user_id, self._db)
         account, _ = await self._get_or_create_account(data.account_id, user)
 
         # Если понадобится вложенный begin (begin_nested, который SAVEPOINT) - создам отдельную функцию
