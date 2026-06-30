@@ -1,13 +1,13 @@
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi import Depends, HTTPException, status
 from sqlalchemy import select
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from jwt import InvalidTokenError, ExpiredSignatureError
 
 from app.modules.users import ExistsUser, User, UserRead
 from app.core.exceptions import Http404
 from app.core.database import AsyncDBSession, get_db
-from app.core.security import try_decode_jwt_token, encode_jwt_token, verify_password
+from app.core.security import decode_jwt_token as decode_jwt_token_to_raw_payload, encode_jwt_token, verify_password
 from app.core.config import settings
 
 
@@ -20,15 +20,13 @@ _USER_ID_KEY = 'user_id'
 class TokenPayload(BaseModel):
     user_id: int
 
-def _decode_auth_token(token: str) -> TokenPayload:
+def _decode_jwt_token(token: str) -> TokenPayload:
     try:
-        payload = try_decode_jwt_token(token)
+        raw_payload = decode_jwt_token_to_raw_payload(token)
+        return TokenPayload.model_validate(raw_payload)
     except ExpiredSignatureError:
         raise HTTPException(401, 'Auth token is expired')
-    except InvalidTokenError:
-        payload = None
-
-    if payload is None or 'user_id' not in payload:
+    except (InvalidTokenError, ValidationError):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, 'Invalid auth token')
 
 ### Services ###
@@ -62,17 +60,7 @@ class AuthService:
         Raises:
             HTTPException - Токен истёк или не валиден, 401 код
         """
-        payload, error = try_decode_jwt_token(refresh_token)
-
-        TOKEN_IS_INVALID_MSG = 'Auth token is invalid'
-        if error is not None:
-            msg = (
-                'Auth token is expired, refresh them by refresh token'
-                if isinstance(error, jwt.ExpiredSignatureError)
-                else TOKEN_IS_INVALID_MSG
-            )
-            raise HTTPException(status.HTTP_401_UNAUTHORIZED, msg)
-
+        payload = _decode_jwt_token(refresh_token)
         if _USER_ID_KEY not in
 
 
@@ -86,7 +74,7 @@ async def _get_current_user_orm(
         db: AsyncDBSession = Depends(get_db)
     ) -> User:
     token = credentials.credentials
-    payload = _decode_auth_token(token)
+    payload = _decode_jwt_token(token)
     user = await db.get(User, payload.user_id)
 
     if user is None or not user.is_active:
