@@ -44,6 +44,9 @@ class Account(Base):
         'Payment', back_populates='account', cascade=ALL_AND_DELETE_ORPHAN,
     )
 
+    def as_read(self) -> "AccountRead":
+        return AccountRead.model_validate(self, from_attributes=True)
+
 class Payment(Base):
     __tablename__ = 'payments'
 
@@ -67,6 +70,15 @@ class Payment(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),
                                                  server_default=func.now())
 
+    def as_read(self) -> "PaymentRead":
+        return PaymentRead.model_validate(self, from_attributes=True)
+
+
+### MARK: Types
+type ExistsAccount = Account | AccountRead
+
+
+# TODO: переместить schemas над моделями
 ### MARK: Schemas
 class AccountRead(BaseModel):
     external_id: int
@@ -169,53 +181,47 @@ class AccountService:
             _logger.info("Attempt to apply already applied payment. Attempt ignored.")
             return False
 
-    async def get_user_accounts(self, user: ExistsUser) -> list[AccountRead]:
-        return list(
-            AccountRead.model_validate(acc, from_attributes=True) for acc in
-            await self._db.scalars(select(Account).where(Account.user_id == user.id))
-        )
+    async def get_user_accounts(self, user: ExistsUser) -> list[Account]:
+        return list(await self._db.scalars(
+            select(Account).where(Account.user_id == user.id)
+        ))
 
     def _assert_account_belong_to_user(self, account: Account, owner: ExistsUser):
         """
         Проверяет, что аккаунт принадлежит пользователю. В случае, если нет - поднимает HTTPException с 403 кодом.
+
         Raises:
             HTTPException: Аккаунт не принадлежит переданному пользователю, 403 код
         """
         if account.user_id != owner.id:
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "It's not your account")
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "It is not your account")
 
-    async def _get_account_orm_or_404(self, external_id: int) -> Account:
-        return await get_or_404(
+    async def get_account_or_404(self, external_id: int, owner: ExistsUser) -> Account:
+        """
+        Raises:
+            Http404: Аккаунта не существует
+            HTTPException: Аккаунт не принадлежит переданному пользователю, 403 код
+        """
+        account = await get_or_404(
             select(Account).where(Account.external_id == external_id),
             f"Account by external_id {external_id} does not exists",
             self._db
         )
+        self._assert_account_belong_to_user(account, owner)
+        return account
 
-    async def get_account_or_404(self, external_id: int, owner: ExistsUser) -> AccountRead:
+    # Принимает Account а не Exists потому, что _assert проверяет значения именно на полях Account
+    # TODO: Переделать под поддержку пагинации, кастомной сортировки и фильтрации
+    async def get_account_payments(self, account: Account, owner: ExistsUser) -> list[Payment]:
         """
+        Возвращает все payment для переданного аккаунта с сортировкой от самых новых.
+
         Raises:
-            Http404: Аккаунт не существует
             HTTPException: Аккаунт не принадлежит переданному пользователю, 403 код
         """
-        account = await self._get_account_orm_or_404(external_id)
         self._assert_account_belong_to_user(account, owner)
-        return AccountRead.model_validate(account, from_attributes=True)
-
-    async def get_account_payments(self, external_id: int, owner: ExistsUser) -> list[PaymentRead]:
-        """
-        Raises:
-            Http404: Аккаунт не существует
-            HTTPException: Аккаунт не принадлежит переданному пользователю, 403 код
-        """
-        # TODO: может ну его и напрямую передавать ORM модели через роуты?
-        account = await self._get_account_orm_or_404(external_id)
-        self._assert_account_belong_to_user(account, owner)
-
-        stmt = select(Payment).where(Payment.account == account)
-        return list(
-            PaymentRead.model_validate(p, from_attributes=True)
-            for p in await self._db.scalars(stmt)
-        )
+        stmt = select(Payment).where(Payment.account_id == account.id).order_by(-Payment.id)
+        return list(await self._db.scalars(stmt))
 
 ### MARK: Deps
 def get_account_service(db: AsyncDBSession = Depends(get_db)) -> AccountService:

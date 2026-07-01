@@ -10,13 +10,19 @@
 from fastapi import APIRouter
 
 from app.utils.fastapi.routers import include_routers
-from . import admin, users, webhooks
+from . import (
+    admin,
+    auth,
+    users,
+    webhooks,
+)
 
 router = APIRouter(
     prefix='/v1',
 )
 include_routers(router, [
     admin.router,
+    auth.router,
     users.router,
     webhooks.router,
 ])

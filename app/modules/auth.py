@@ -6,7 +6,7 @@ from sqlalchemy import select
 from pydantic import BaseModel, ValidationError
 from jwt import InvalidTokenError, ExpiredSignatureError
 
-from app.modules.users import ExistsUser, User, UserRead, UserService, get_user_service
+from app.modules.users import ExistsUser, User, UserService, get_user_service
 from app.core.database import AsyncDBSession, get_db
 from app.core.security import decode_jwt_token, encode_jwt_token, verify_password
 from app.core.config import settings
@@ -74,7 +74,7 @@ class AuthService:
         if payload.type != _TokenType.REFRESH:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Awaited refresh token, got {payload.type}")
 
-        user = await self._user_service.get_active_user_orm_by_id_or_404(payload.user_id)
+        user = await self._user_service.get_active_user_by_id_or_404(payload.user_id)
         return _create_auth_tokens(user)
 
 
@@ -85,7 +85,7 @@ def get_auth_service(
     ):
     return AuthService(db = db, user_service = user_service)
 
-async def _get_current_user_orm(
+async def get_current_user(
         credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer()),
         user_service: UserService = Depends(get_user_service),
     ) -> User:
@@ -95,13 +95,9 @@ async def _get_current_user_orm(
     if payload.type != _TokenType.ACCESS:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, f"Awaited access auth token, got {payload.type}")
 
-    user = await user_service.get_active_user_orm_by_id_or_404(payload.user_id)
-    return user
+    return await user_service.get_active_user_by_id_or_404(payload.user_id)
 
-async def get_current_user(user: User = Depends(_get_current_user_orm)) -> UserRead:
-    return UserRead.model_validate(user, from_attributes=True)
-
-async def get_current_admin(user: User = Depends(_get_current_user_orm)) -> UserRead:
+async def get_current_admin(user: User = Depends(get_current_user)) -> User:
     if not user.is_admin:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "You don't have admin rights")
-    return UserRead.model_validate(user, from_attributes=True)
+    return user

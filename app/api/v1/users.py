@@ -26,7 +26,8 @@ async def get_my_accounts_list(
         curr_user: UserRead = Depends(get_current_user),
         service: AccountService = Depends(get_account_service),
     ) -> list[AccountRead]:
-    return await service.get_user_accounts(curr_user)
+    accounts = await service.get_user_accounts(curr_user)
+    return list(acc.as_read() for acc in accounts)
 
 @router.get('/me/accounts/{id}')
 async def get_my_account_detail(
@@ -34,11 +35,15 @@ async def get_my_account_detail(
         service: AccountService = Depends(get_account_service),
         curr_user: UserRead = Depends(get_current_user),
     ) -> AccountRead:
-    return await service.get_account_or_404(account_id, curr_user)
+    account = await service.get_account_or_404(account_id, curr_user)
+    return account.as_read()
 
 @router.get('/me/accounts/{id}/payments')
 async def get_my_account_payments(
         account_id: int = Path(alias='id'),
+        service: AccountService = Depends(get_account_service),
         curr_user: UserRead = Depends(get_current_user),
     ) -> list[PaymentRead]:
-    raise NotImplementedError
+    account = await service.get_account_or_404(account_id, curr_user)
+    payments = await service.get_account_payments(account, curr_user)
+    return list(p.as_read() for p in payments)

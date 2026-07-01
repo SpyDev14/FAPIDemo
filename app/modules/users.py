@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 from enum import StrEnum
 
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-from sqlalchemy import String, Enum
+from sqlalchemy import String, Enum, true
 from pydantic import BaseModel, Field, EmailStr
 from fastapi import Depends
 
@@ -67,10 +67,15 @@ class User(Base):
     # special models for it (if needs dynamically roles). This is not
     # necessary now and will be over-engineering.
 
+    def as_read(self) -> "UserRead":
+        return UserRead.model_validate(self, from_attributes=True)
+
+
 ### MARK: Types
 # добавил, чтобы не передавать сырой user_id там, где пользователь точно должен существовать
 type ExistsUser = User | UserRead
 
+# TODO: переместить schemas над моделями
 ### MARK: Schemas
 class UserRead(BaseModel):
     id: int
@@ -92,12 +97,7 @@ class UserService:
     def __init__(self, db: AsyncDBSession):
         self._db = db
 
-    # NOTE: вероятно будет удалено в ближайшем будущем
-    # async def get_user_or_404(self, user_id: int) -> UserRead:
-    #     user = await get_by_id_or_404(User, user_id, self._db)
-    #     return UserRead.model_validate(user, from_attributes=True)
-
-    async def get_active_user_orm_by_id_or_404(self, user_id: int) -> User:
+    async def get_active_user_by_id_or_404(self, user_id: int) -> User:
         user = await get_by_id_or_404(User, user_id, self._db)
         if not user.is_active:
             raise Http404(f"User by id {user_id} is inactive")
