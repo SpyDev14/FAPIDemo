@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+from typing import Iterable
 from uuid import UUID
 import hashlib, hmac, logging
 
@@ -9,13 +10,13 @@ from sqlalchemy import (
     BigInteger, Numeric, DateTime,
     ForeignKey, func, select, update
 )
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from fastapi import Depends, status, HTTPException
 
 from app.utils.orm.relationship_cascade import ALL_AND_DELETE_ORPHAN
 from app.utils.orm.fk_on_delete import CASCADE
 from app.utils.orm.shortcuts import get_by_id_or_404, get_or_404, get_or_create
-from app.modules.users import ExistsUser, User, UserService, get_user_service
+from app.modules.users import ExistsUser, User
 from app.core.database import Base, AsyncDBSession, get_db
 from app.core.config import settings
 
@@ -92,28 +93,33 @@ class AccountService:
     # правила от конкретных полей, а также прибавим смысла методу _verify
     # Да, определённо нужно это сделать, так как тут мы убираем signature из data_dict, т.е завязываемся на поля data
     # для такого есть метод _verify
-    def _compute_webhook_signature(self, data: PaymentWebhookData, secret_key: str):
+    @staticmethod
+    def _compute_webhook_signature(fields: dict[str, object], secret_key: str):
+        """
+        Params:
+            fields: Поля, что используются для генерации сигнатуры со значениями.
+        """
         # В сторонней системе подпись генерируется как SHA256 хеш строки,
         # полученной путём конкатенации строковых представлений всех значений,
-        # отсортированных в алфавитном порядке по названию и с добавленным на конце
-        # SECRET_KEY. Например, для словаря user_id, account_id,
+        # отсортированных в алфавитном порядке по названию и с добавленным SECRET_KEY
+        # на конце. Например, для словаря user_id, account_id,
         # transaction_id и amount строка для сигнатуры будет выглядеть как:
         # f"{account_id}{amount}{transaction_id}{user_id}{secret_key}"
-        data_dict = data.model_dump(exclude={'signature'})
-        signature_string = ''.join(str(data_dict[k]) for k in sorted(data_dict.keys())) + secret_key
-        return hashlib.sha256(signature_string.encode()).hexdigest()
+        signature = ''.join(str(fields[k]) for k in sorted(fields.keys())) + secret_key
+        return hashlib.sha256(signature.encode()).hexdigest()
 
     def _verify_webhook_signature(self, data: PaymentWebhookData) -> bool:
-        expected_signature = self._compute_webhook_signature(data, settings.SECRET_KEY)
+        fields = data.model_dump(exclude={'signature'})
+        expected_signature = self._compute_webhook_signature(fields, settings.SECRET_KEY)
 
-        # NOTE: hmac.compare защищён от тайминг-атак в отличии от `==`
+        # ВАЖНО: hmac.compare защищён от тайминг-атак в отличии от `==`
         return hmac.compare_digest(expected_signature, data.signature)
 
     async def _get_or_create_account(
             self, external_id: int, user: ExistsUser
         ) -> tuple[Account, bool]:
         return await get_or_create(
-            select(Account).where(Account.external_id == external_id, Account.user_id == user.id),
+            select(Account).where(Account.external_id == external_id),
             Account(user_id = user.id, external_id = external_id),
             self._db
         )
@@ -125,14 +131,16 @@ class AccountService:
         await self._db.execute(
             update(Account)
             .where(Account.id == account_id)
-            .values(balance = Account.balance + amount) # Атомарное изменение баланса чтобы из-за RC деньги не исчезли
+            # "Все знают", но атомарное обновление чтобы из-за RC деньги не исчезали
+            # Если передавать готовое новое значение из кода будет иногда перезаписывать другие обновления
+            .values(balance = Account.balance + amount)
         )
 
     async def try_process_payment(self, data: PaymentWebhookData) -> bool:
         """
         Возвращает `True`, если было обработано и `False`, если оплата **уже** была обработана.
 
-        ВАЖНО: начинает **новую** транзакцию (BEGIN), делает коммит в случае успеха.
+        **ВАЖНО:** начинает **новую** транзакцию (BEGIN), делает коммит в случае успеха.
 
         Raises:
             Http404: Пользователь не найден
