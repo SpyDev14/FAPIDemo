@@ -2,11 +2,12 @@ from typing import TYPE_CHECKING
 from enum import StrEnum
 
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-from sqlalchemy import String, Enum, true
+from sqlalchemy import String, Enum, true, text
 from pydantic import BaseModel, Field, EmailStr
 from fastapi import Depends
 
 from app.utils.orm.relationship_cascade import ALL_AND_DELETE_ORPHAN
+from app.utils.orm.inspection import length_of
 from app.utils.orm.shortcuts import get_by_id_or_404
 from app.core.exceptions import Http404
 from app.core.database import AsyncDBSession, Base, get_db
@@ -37,8 +38,9 @@ class User(Base):
     # NOTE: часто ищем по почте (напр. при логине (auth))
     # (unique уже добавляет индекс (UNIQUE INDEX in sql))
     email: Mapped[str] = mapped_column(String(255), unique=True)
-    hashed_password: Mapped[str] = mapped_column(String(255)) # TODO: Change VARCHAR size
-    full_name: Mapped[str] = mapped_column(String(255))
+    hashed_password: Mapped[str] = mapped_column(String(128)) # С Argon2 будет 97 символов
+    full_name: Mapped[str] = mapped_column(String(150))
+    # используется для "мягкого" удаления пользователя
     is_active: Mapped[bool] = mapped_column(server_default=true(), default=True)
 
     # TODO: переписать на русский
@@ -50,7 +52,8 @@ class User(Base):
     # should go through User instance (like `user.is_admin`
     # property) or something other for it (some new way), but
     # NOT through `.role` directly!
-    role: Mapped[Role] = mapped_column(Enum(Role), default=Role.USER)
+    # NOTE: без указания обычного default поле будет None до commit, поэтому везде нужно указывать оба
+    role: Mapped[Role] = mapped_column(Enum(Role), server_default=text(Role.USER), default=Role.USER)
 
     accounts: Mapped[list['Account']] = relationship(
         'Account', back_populates='user', cascade=ALL_AND_DELETE_ORPHAN
@@ -94,8 +97,8 @@ class UserUpdate(BaseModel):
     is_active: bool | None = Field(default=True)
 
 class UserCreate(BaseModel):
-    email: EmailStr = Field(max_length=255)
-    full_name: str = Field(max_length=255)
+    email: EmailStr = Field(max_length=length_of(User.email))
+    full_name: str = Field(max_length=length_of(User.full_name))
     password: str = Field(min_length=8)
 
 ### MARK: Services
