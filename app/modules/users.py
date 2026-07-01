@@ -94,7 +94,7 @@ class UserRead(BaseModel):
 
 class UserUpdate(BaseModel):
     full_name: str | None = Field(default=None, max_length=255)
-    is_active: bool | None = Field(default=True)
+    is_active: bool | None = Field(default=None)
 
 class UserCreate(BaseModel):
     email: EmailStr = Field(max_length=length_of(User.email))
