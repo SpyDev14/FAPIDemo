@@ -5,7 +5,7 @@ from alembic import context
 
 from app.core.database import Base
 from app.core.config import settings, ALEMBIC_LOGGING_CONF
-from app.modules import init_all_models_for_metadata
+from app.modules import init_modules
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -17,7 +17,7 @@ logging.config.dictConfig(ALEMBIC_LOGGING_CONF)
 
 # MetaData object for 'autogenerate' support
 target_metadata = Base.metadata
-init_all_models_for_metadata()
+init_modules()
 # target_metadata - лишь ссылка на объект в памяти,
 # его изменения отразится и здесь, так что всё в порядке
 

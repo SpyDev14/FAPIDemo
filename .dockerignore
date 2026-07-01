@@ -3,7 +3,10 @@
 .dockerignore
 Dockerfile
 docker-compose.yml
-README.md
+*.md
+# все .env, а не только ".env"
+*.env
+TODO.txt
 
 ### Git ignore stuff (copied from .gitignore) ###
 # Byte-compiled / optimized / DLL files

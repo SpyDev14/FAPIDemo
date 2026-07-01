@@ -16,10 +16,12 @@ def hash_password(password: str) -> str:
     return _pwd_context.hash(password)
 
 def verify_password(plain_pass: str, hashed_pass: str) -> bool:
-    """Проверяет соответствие переданного чистого пароля захешированному"""
+    """Проверяет соответствие переданного сырого пароля захешированному"""
     return _pwd_context.verify(plain_pass, hashed_pass)
 
 ### JWT tokens ###
+# Эти функции общие для любых JWT токенов в проекте
+# Всё специфичное для auth определено в modules.auth
 def encode_jwt_token(payload: Mapping[str, object], lifetime: timedelta) -> str:
     data = dict(payload)
     expire = datetime.now(timezone.utc) + lifetime

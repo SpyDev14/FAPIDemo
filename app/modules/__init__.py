@@ -1,5 +1,5 @@
 
-def init_all_models_for_metadata():
+def init_modules():
     """
     Импортирует все модули с SQLAlchemy моделями, тем самым добавляя их в `Base.metadata`.
     Эта функция нужна исключительно для её вызова в `alembic/env.py`
@@ -10,9 +10,9 @@ def init_all_models_for_metadata():
     # самый `models`, если он есть. Но пока проект такой крошечный я не
     # вижу смысла в таком усложнении, плюс ещё нужно будет опять резать
     # существующие файлы и как-то это нормально коммитить
-    # TODO: заменить на автозагрузку
+    # TODO: заменить на автозагрузку, можно через pkgutil
     from app.modules import (
         accounts,
-        users,
         auth,
+        users,
     )

@@ -3,10 +3,9 @@ from pydantic import GetJsonSchemaHandler
 from pydantic_core import core_schema
 from sqlalchemy import Numeric
 
-# Ранее для Money использовалась локальная _Money = Numeric(...)
-# в app.modules.accounts (без указания в type_annotation_map), но
-# для добавления валидации и в pydantic пришлось добавлять целый
-# отдельный тип.
+# Этот тип был добавлен для согласованности ORM & Pydantic моделей.
+# Ранее для Money использовалась локальная _Money = Numeric(...) в
+# modules.accounts (без указания в Base.type_annotation_map).
 class Money(Decimal):
     """Тип для денег. Используйте его вместо простого decimal в Pydantic & SQLAlchemy"""
 

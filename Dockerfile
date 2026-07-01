@@ -1,4 +1,4 @@
-FROM python:3.13.8-slim-bookworm
+FROM python:3.13.8-slim-bookworm AS base
 
 WORKDIR /app
 
@@ -10,6 +10,23 @@ RUN pip install --no-cache-dir uv
 
 COPY pyproject.toml uv.lock ./
 
+# ---- Dev ----
+FROM base AS dev
 RUN uv sync --frozen
 
-COPY . .
+# не добавляйте .env, envars только через docker-compose env_file: [.env]
+# чтобы не утекал в образ
+COPY alembic.ini .
+COPY alembic .
+COPY tests .
+COPY app .
+
+# ---- Prod ----
+FROM base AS prod
+RUN uv sync --frozen --only-group prod
+
+# не добавляйте .env, envars только через docker-compose env_file: [.env]
+# чтобы не утекал в образ
+COPY alembic.ini .
+COPY alembic .
+COPY app .

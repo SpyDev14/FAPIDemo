@@ -15,6 +15,8 @@ class Base(DeclarativeBase):
         Money: Money.SQLALCHEMY_TYPE,
     }
 
+    # TODO: урезать комментарий т.к слишком много информации про
+    # такую банальщину + выглядит как оправдание
     # Я использую BigInt вместо Int потому, что лишние 4 байта на
     # запись (+ 4 байта на FK) не сильно увеличивают занимаемое
     # место, но это полностью исключает проблему переполнения ID,
@@ -34,6 +36,7 @@ class Base(DeclarativeBase):
     # (отрицательные числа не используются для ID, по крайней мере обычно).
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
+# Не делать публичным. В случае надобности добавить спец. зависимость
 _engine = create_async_engine(
     url=settings.asyncpg_db_url,
     echo=settings.DEBUG,
@@ -50,11 +53,10 @@ _async_session_maker = async_sessionmaker(
 # TODO: Подумать над переименованием в просто AsyncSession
 # NOTE: TypeAlias вместо синтаксиса type потому-что это в первую очередь
 # просто имя для реимпорта AsyncSession, а не отдельный тип. Разница в том,
-# что type не поддерживает проверку isinstance
+# что type не поддерживает проверку isinstance.
 # TODO: Возможно аннотацию как TypeAlias тоже стоит убрать.
-# TODO: РЕшено: просто добавить as AsyncSession в импорт типа сверху и
-# добавить комментарий, что это под реимпорт. Не делаю это сразу, чтобы
-# сохранить изменение в git (не в общий worksave)
+# TODO: Возможно лучше просто добавить `as AsyncSession` в импорт типа сверху и
+# добавить комментарий, что это под реимпорт.
 AsyncDBSession: TypeAlias = _AsyncSession
 """Для реимпорта под аннотации"""
 
