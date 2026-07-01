@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from app.modules.users import get_current_admin
+from app.modules.auth import get_current_admin
 
 router = APIRouter(
     prefix='/admin',

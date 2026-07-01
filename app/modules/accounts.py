@@ -68,7 +68,7 @@ class Payment(Base):
 
 ### MARK: Schemas
 class AccountRead(BaseModel):
-    id: int = Field(alias='external_id')
+    external_id: int
     balance: Decimal
 
 class PaymentRead(BaseModel):
@@ -78,17 +78,16 @@ class PaymentRead(BaseModel):
 class PaymentWebhookData(BaseModel):
     user_id: int
     account_id: int
-    transaction_id: str
+    transaction_id: UUID
     amount: int
     signature: str
 
 ### MARK: Services
 class AccountService:
-    def __init__(self, db: AsyncDBSession, user_service: UserService):
+    def __init__(self, db: AsyncDBSession):
         self._db = db
-        self._user_service = user_service
 
-    # TODO: Заменить аргумент data на Iterable[object], преобразовывать в sorted(Iterable[str])
+    # TODO: Заменить аргумент data на Iterable[object], преобразовывать в Sorted[str]
     # Возможно. А возможно и оставить. Для тестов такое изменение было бы удобней т.к мы отделим
     # правила от конкретных полей, а также прибавим смысла методу _verify
     # Да, определённо нужно это сделать, так как тут мы убираем signature из data_dict, т.е завязываемся на поля data
@@ -114,7 +113,7 @@ class AccountService:
             self, external_id: int, user: ExistsUser
         ) -> tuple[Account, bool]:
         return await get_or_create(
-            select(Account).where(Account.user_id == user.id),
+            select(Account).where(Account.external_id == external_id, Account.user_id == user.id),
             Account(user_id = user.id, external_id = external_id),
             self._db
         )
@@ -200,6 +199,7 @@ class AccountService:
             Http404: Аккаунт не существует
             HTTPException: Аккаунт не принадлежит переданному пользователю, 403 код
         """
+        # TODO: может ну его и напрямую передавать ORM модели через роуты?
         account = await self._get_account_orm_or_404(external_id)
         self._assert_account_belong_to_user(account, owner)
 
@@ -210,11 +210,5 @@ class AccountService:
         )
 
 ### MARK: Deps
-def get_account_service(
-        db: AsyncDBSession = Depends(get_db),
-        user_service: UserService = Depends(get_user_service),
-    ) -> AccountService:
-    return AccountService(
-        db = db,
-        user_service = user_service
-    )
+def get_account_service(db: AsyncDBSession = Depends(get_db)) -> AccountService:
+    return AccountService(db = db)

@@ -7,7 +7,6 @@ from pydantic import BaseModel, ValidationError
 from jwt import InvalidTokenError, ExpiredSignatureError
 
 from app.modules.users import ExistsUser, User, UserRead, UserService, get_user_service
-from app.core.exceptions import Http404
 from app.core.database import AsyncDBSession, get_db
 from app.core.security import decode_jwt_token, encode_jwt_token, verify_password
 from app.core.config import settings
@@ -31,7 +30,7 @@ def _decode_auth_token(token: str) -> _TokenPayload:
         raw_payload = decode_jwt_token(token)
         return _TokenPayload.model_validate(raw_payload)
     except ExpiredSignatureError:
-        raise HTTPException(401, 'Auth token is expired')
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, 'Auth token is expired')
     except (InvalidTokenError, ValidationError):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, 'Invalid auth token')
 
@@ -53,13 +52,13 @@ class AuthService:
     async def login(self, email: str, password: str) -> AuthTokens:
         """
         Raises:
-            Http404: Неверен email или пароль (не уточняется)
+            HTTPException: Неверен email, пароль или пользователь неактивен (не уточняется)
         """
         user = await self._db.scalar(select(User).where(User.email == email))
 
         # Не говорю что конкретно для безопасности
-        if user is None or not verify_password(password, user.hashed_password):
-            raise Http404("Wrong login or password")
+        if user is None or not user.is_active or not verify_password(password, user.hashed_password):
+            raise HTTPException(401, "Wrong login or password, or user is inactive")
 
         return _create_auth_tokens(user)
 

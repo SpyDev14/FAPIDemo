@@ -4,10 +4,11 @@ from enum import StrEnum
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy import String, Enum
 from pydantic import BaseModel, Field, EmailStr
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
 
 from app.utils.orm.relationship_cascade import ALL_AND_DELETE_ORPHAN
 from app.utils.orm.shortcuts import get_by_id_or_404
+from app.core.exceptions import Http404
 from app.core.database import AsyncDBSession, Base, get_db
 
 if TYPE_CHECKING:
@@ -99,7 +100,7 @@ class UserService:
     async def get_active_user_orm_by_id_or_404(self, user_id: int) -> User:
         user = await get_by_id_or_404(User, user_id, self._db)
         if not user.is_active:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, f"User by id {user_id} is inactive")
+            raise Http404(f"User by id {user_id} is inactive")
         return user
 
 ### MARK: Deps

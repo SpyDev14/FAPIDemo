@@ -29,7 +29,7 @@ include_routers(api_router, [
 
 # AUTH:
 # POST  /api/v1/auth/login
-# POST  /api/v1/auth/refresh (req: user)
+# POST  /api/v1/auth/refresh
 
 # WEBHOOKS:
 # POST  /api/v1/webhooks/payment
