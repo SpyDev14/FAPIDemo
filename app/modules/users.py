@@ -99,7 +99,9 @@ class UserUpdate(BaseModel):
 class UserCreate(BaseModel):
     email: EmailStr = Field(max_length=length_of(User.email))
     full_name: str = Field(max_length=length_of(User.full_name))
-    password: str = Field(min_length=8)
+    # Максимум нужен для предотвращения DoS атак на создание пользователя (тут такого
+    # эндпоинта в публичном доступе пока нет, но всё же лучше сразу указать)
+    password: str = Field(min_length=8, max_length=64)
 
 ### MARK: Services
 class UserService:
