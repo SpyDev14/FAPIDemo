@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase
 from sqlalchemy import BigInteger, UUID as SQL_UUID
 
 from app.core.config import settings
+from app.core.types import Money
 
 
 class Base(DeclarativeBase):

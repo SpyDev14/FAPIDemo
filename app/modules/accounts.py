@@ -7,7 +7,7 @@ import hashlib, hmac, logging
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy import (
-    BigInteger, Numeric, DateTime,
+    BigInteger, DateTime,
     ForeignKey, func, select, update
 )
 from pydantic import BaseModel
@@ -19,16 +19,11 @@ from app.utils.orm.shortcuts import get_by_id_or_404, get_or_404, get_or_create
 from app.modules.users import ExistsUser, User
 from app.core.database import Base, AsyncDBSession, get_db
 from app.core.config import settings
+from app.core.types import Money
 
 _logger = logging.getLogger(__name__)
 
 ### MARK: Models
-# Base.type_annotation_map было бы оверинженерингом для этого,
-# поэтому я выбрал простой алиас через переменную (чтобы была
-# согласованность)
-# Если эти двое (модели) будут разбиты на разные модули, можно
-# будет создать модуль с типами и добавить его в annotation_map
-_Money = Numeric(15, 2)
 class Account(Base):
     __tablename__ = 'accounts'
 
@@ -38,7 +33,8 @@ class Account(Base):
     user: Mapped[User] = relationship(User, back_populates='accounts')
     # ID from external payment system
     external_id: Mapped[int] = mapped_column(BigInteger, unique=True)
-    balance: Mapped[Decimal] = mapped_column(_Money, default=Decimal('0.00'))
+    # NOTE: без указания обычного default поле будет None до commit, поэтому везде нужно указывать оба
+    balance: Mapped[Money] = mapped_column(server_default='0.00', default=Decimal('0.00'))
 
     payments: Mapped[list['Payment']] = relationship(
         'Payment', back_populates='account', cascade=ALL_AND_DELETE_ORPHAN,
@@ -54,7 +50,7 @@ class Payment(Base):
         BigInteger, ForeignKey(Account.id, ondelete=CASCADE), index=True,
     )
     account: Mapped[Account] = relationship(Account, back_populates='payments')
-    amount: Mapped[Decimal] = mapped_column(_Money)
+    amount: Mapped[Money]
     transaction_id: Mapped[UUID] = mapped_column(unique=True)
 
     # Обычно мы будем сортировать эти записи в порядке "сначала новые",
@@ -82,10 +78,10 @@ type ExistsAccount = Account | AccountRead
 ### MARK: Schemas
 class AccountRead(BaseModel):
     external_id: int
-    balance: Decimal
+    balance: Money
 
 class PaymentRead(BaseModel):
-    amount: Decimal
+    amount: Money
     created_at: datetime
 
 class PaymentWebhookData(BaseModel):
