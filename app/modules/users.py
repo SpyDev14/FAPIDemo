@@ -27,6 +27,10 @@ class User(Base):
     # при написании сырых SQL запросов (оптимизации), при просмотре БД
     # инструментами по типу PG Admin.
     class Role(StrEnum):
+        """
+        ВНИМАНИЕ: использование Role допускается только в ORM запросах и нигде больше.
+        Для проверки прав используйте спец. методы / св-ва.
+        """
         ADMIN = 'admin'
         USER = 'user'
 
@@ -37,6 +41,7 @@ class User(Base):
     full_name: Mapped[str] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(server_default=true(), default=True)
 
+    # TODO: переписать на русский
     # I choose enum instead bool flag because it's more
     # flexible for future extending without over-engineering
     # (just string instead bool in db).
@@ -62,7 +67,8 @@ class User(Base):
     # If we also have other roles (like "Manager"), i would add here
     # properties / methods for check permissions (`can_create_users`,
     # `can_view_users`, `can_edit_user(User)`, etc.) or `has_permission`
-    # and `Permission` enum (user.has_permission(Perm.CAN_VIEW_USERS))
+    # and `Permission` enum (user.has_permission(Perm.CAN_VIEW_USERS)) or
+    # base class `Permission` with method check_user_has(User) ot some else.
     # If more differentiated roles are needed & permissions, i will create
     # special models for it (if needs dynamically roles). This is not
     # necessary now and will be over-engineering.

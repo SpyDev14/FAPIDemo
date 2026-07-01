@@ -8,12 +8,15 @@ router = APIRouter(
 )
 
 
-# GET   /api/v1/admin/users?$pagination,order_by,$filter            (req: admin)
-# POST  /api/v1/admin/users                                         (req: admin)
-# GET   /api/v1/admin/users/{id}                                    (req: admin)
-# PATCH /api/v1/admin/users/{id}                                    (req: admin)
-# GET   /api/v1/admin/users/{id}/accounts?order_by,$pagination      (req: admin)
-# GET   /api/v1/admin/users/{id}/accounts/{number}                  (req: admin)
-# GET   /api/v1/admin/users/{id}/accounts/{number}/payments?$filter (req: admin)
+# ADMIN API:
+# GET   /api/v1/admin/users?$pagination,$ordering,$filter       (req: admin) | get users
+# POST  /api/v1/admin/users                                     (req: admin) | create user
+# GET   /api/v1/admin/users/{id}                                (req: admin) | get user
+# PATCH /api/v1/admin/users/{id}                                (req: admin) | update user
+# DEL   /api/v1/admin/users/{id}                                (req: admin) | delete user
+# GET   /api/v1/admin/users/{id}/accounts?$ordering,$pagination (req: admin) | get user accounts
+# GET   /api/v1/admin/users/{id}/accounts/{id}                  (req: admin) | get user account
+# GET   /api/v1/admin/users/{id}/accounts/{id}/payments?$filter (req: admin) | get account payments
+# GET   /api/v1/admin/users/{id}/accounts/{id}/payments/{id}    (req: admin) | get account payment
 
 #@router.get()

@@ -11,7 +11,8 @@ from app.core.types import Money
 
 class Base(DeclarativeBase):
     type_annotation_map = {
-        UUID: SQL_UUID
+        UUID: SQL_UUID,
+        Money: Money.SQLALCHEMY_TYPE,
     }
 
     # Я использую BigInt вместо Int потому, что лишние 4 байта на

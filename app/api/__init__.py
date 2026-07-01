@@ -18,14 +18,15 @@ include_routers(api_router, [
 # GET   /api/v1/users/me/accounts/{id}/payments?$filter (req: user)
 
 # ADMIN API:
-# GET   /api/v1/admin/users?$pagination,$ordering,$filter       (req: admin)
-# POST  /api/v1/admin/users                                     (req: admin)
-# GET   /api/v1/admin/users/{id}                                (req: admin)
-# PATCH /api/v1/admin/users/{id}                                (req: admin)
-# DEL   /api/v1/admin/users/{id}                                (req: admin)
-# GET   /api/v1/admin/users/{id}/accounts?$ordering,$pagination (req: admin)
-# GET   /api/v1/admin/users/{id}/accounts/{id}                  (req: admin)
-# GET   /api/v1/admin/users/{id}/accounts/{id}/payments?$filter (req: admin)
+# GET   /api/v1/admin/users?$pagination,$ordering,$filter       (req: admin) | get users
+# POST  /api/v1/admin/users                                     (req: admin) | create user
+# GET   /api/v1/admin/users/{id}                                (req: admin) | get user
+# PATCH /api/v1/admin/users/{id}                                (req: admin) | update user
+# DEL   /api/v1/admin/users/{id}                                (req: admin) | delete user
+# GET   /api/v1/admin/users/{id}/accounts?$ordering,$pagination (req: admin) | get user accounts
+# GET   /api/v1/admin/users/{id}/accounts/{id}                  (req: admin) | get user account
+# GET   /api/v1/admin/users/{id}/accounts/{id}/payments?$filter (req: admin) | get account payments
+# GET   /api/v1/admin/users/{id}/accounts/{id}/payments/{id}    (req: admin) | get account payment
 
 # AUTH:
 # POST  /api/v1/auth/login
