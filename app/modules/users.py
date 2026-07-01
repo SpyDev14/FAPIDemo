@@ -35,7 +35,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True)
     hashed_password: Mapped[str] = mapped_column(String(255)) # TODO: Change VARCHAR size
     full_name: Mapped[str] = mapped_column(String(255))
-    is_active: Mapped[bool] = mapped_column(default=True) # TODO: make migration!!!
+    is_active: Mapped[bool] = mapped_column(server_default=true(), default=True)
 
     # I choose enum instead bool flag because it's more
     # flexible for future extending without over-engineering
