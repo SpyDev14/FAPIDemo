@@ -93,7 +93,7 @@ class UserRead(BaseModel):
     is_active: bool
 
 class UserUpdate(BaseModel):
-    full_name: str | None = Field(default=None, max_length=255)
+    full_name: str | None = Field(default=None, max_length=length_of(User.full_name))
     is_active: bool | None = Field(default=None)
 
 class UserCreate(BaseModel):

@@ -160,6 +160,7 @@ class AccountService:
         user = await get_by_id_or_404(User, data.user_id, self._db)
         account, _ = await self._get_or_create_account(data.account_id, user)
 
+        # Если был создан - user уже такой же. И
         if account.user_id != user.id:
             raise HTTPException(400, f"Account by id {account.id} not belong to user by id {user.id}")
 
