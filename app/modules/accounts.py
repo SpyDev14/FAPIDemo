@@ -147,7 +147,7 @@ class AccountService:
         """
         Возвращает `True`, если было обработано и `False`, если оплата **уже** была обработана.
 
-        **ВАЖНО:** начинает **новую** транзакцию (BEGIN), делает коммит в случае успеха.
+        **ВАЖНО:** делает COMMIT и начинает **новую** транзакцию (BEGIN).
 
         Raises:
             Http404: Пользователь не найден
@@ -162,6 +162,10 @@ class AccountService:
 
         if account.user_id != user.id:
             raise HTTPException(400, f"Account by id {account.id} not belong to user by id {user.id}")
+
+        # 1. Сохраняем потенциально созданный новый счёт
+        # 2. Без commit/rollback нельзя начать новую транзакцию, что нужно ниже
+        await self._db.commit()
 
         # Если понадобится вложенный begin (begin_nested, который SAVEPOINT) - создам отдельную функцию
         try:
