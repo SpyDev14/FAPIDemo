@@ -1,4 +1,4 @@
-"""empty message
+"""add is_active to User
 
 Revision ID: f3b751e07090
 Revises: d4f51f3bcf60
