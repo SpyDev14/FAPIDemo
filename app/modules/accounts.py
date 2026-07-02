@@ -88,7 +88,7 @@ class PaymentWebhookData(BaseModel):
     user_id: int
     account_id: int
     transaction_id: UUID
-    amount: int
+    amount: Money
     signature: str
 
 ### MARK: Services
@@ -132,7 +132,7 @@ class AccountService:
             self._db
         )
 
-    async def _change_account_balance(self, account_id: int, amount: int):
+    async def _change_account_balance(self, account_id: int, amount: Money):
         """
         Изменяет баланс по переданному id на переданную сумму. Сумма (`amount`) **может быть отрицательной**.
         """
@@ -148,7 +148,7 @@ class AccountService:
         """
         Возвращает `True`, если было обработано и `False`, если оплата **уже** была обработана.
 
-        **ВАЖНО:** начинает **новую** транзакцию (BEGIN), делает коммит в случае успеха.
+        **ВАЖНО:** делает COMMIT и начинает **новую** транзакцию (BEGIN).
 
         Raises:
             Http404: Пользователь не найден
@@ -160,6 +160,14 @@ class AccountService:
 
         user = await get_by_id_or_404(User, data.user_id, self._db)
         account, _ = await self._get_or_create_account(data.account_id, user)
+
+        # Если был создан - user уже такой же.
+        if account.user_id != user.id:
+            raise HTTPException(400, f"Account by id {account.id} not belong to user by id {user.id}")
+
+        # 1. Сохраняем потенциально созданный новый счёт
+        # 2. Без commit/rollback нельзя начать новую транзакцию, что нужно ниже
+        await self._db.commit()
 
         # Если понадобится вложенный begin (begin_nested, который SAVEPOINT) - создам отдельную функцию
         try:

@@ -1,11 +1,27 @@
 from typing import Iterable
 from fastapi import APIRouter
 
+
+# Я решил написать эту функцию, чтобы не писать каждый
+# раз несколько строк с .include_router(...). Кто-то скажет
+# "Over-Engineering" и скорее всего да, но всё же это удобно.
+def include_routers(root: APIRouter, routers: Iterable[APIRouter]):
+    """
+    ```python
+        for router in routers:
+            root.include_router(router)
+    ```
+    """
+    for router in routers:
+        root.include_router(router)
+
+
 # Pre-s: в рабочем проекте я бы такого не писал, разумеется.
 # Но т.к. я в т.ч. в опред. степени отдыхаю разрабатывая этот проект,
 # я буду попутно делится своими мыслями по типу этой.
 
 # TODO: вместо такой функции лучше пойти в репо fastapi и кинуть PR на добавление ибо почему бы и нет.
+# UPD: там такое не примут :(
 
 # Не хватает this синтаксиса из C#.
 # В C# можно написать нечто такое:
@@ -57,16 +73,3 @@ from fastapi import APIRouter
 #     }
 # }
 # метод будет доступен при импорте трейта, также как это работает с ext методами C#
-
-# Я решил написать эту функцию, чтобы не писать каждый
-# раз несколько строк с .include_router(...). Кто-то скажет
-# "Over-Engineering" и скорее всего да, но всё же это удобно.
-def include_routers(root: APIRouter, routers: Iterable[APIRouter]):
-    """
-    ```python
-        for router in routers:
-            root.include_router(router)
-    ```
-    """
-    for router in routers:
-        root.include_router(router)
