@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from typing import Mapping
+from typing import Any, Mapping
 
 from pwdlib.hashers.argon2 import Argon2Hasher
 from pwdlib import PasswordHash
@@ -22,13 +22,13 @@ def verify_password(plain_pass: str, hashed_pass: str) -> bool:
 ### JWT tokens ###
 # Эти функции общие для любых JWT токенов в проекте
 # Всё специфичное для auth определено в modules.auth
-def encode_jwt_token(payload: Mapping[str, object], lifetime: timedelta) -> str:
-    data = dict(payload)
+def encode_jwt_token(payload: Mapping[str, Any], lifetime: timedelta) -> str:
+    data = dict(payload) # ниже меняем словарь
     expire = datetime.now(timezone.utc) + lifetime
     data['exp'] = expire
     return jwt.encode(data, _SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
-def decode_jwt_token(token: str) -> dict[str, object]:
+def decode_jwt_token(token: str) -> dict[str, Any]:
     """
     Raises:
         jwt.ExpiredSignatureError: токен просрочился (является наследником `jwt.InvalidTokenError`)

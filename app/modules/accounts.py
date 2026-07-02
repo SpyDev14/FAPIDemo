@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 from uuid import UUID
 import hashlib, hmac, logging
 
@@ -101,7 +102,7 @@ class AccountService:
     # Да, определённо нужно это сделать, так как тут мы убираем signature из data_dict, т.е завязываемся на поля data
     # для такого есть метод _verify
     @staticmethod
-    def _compute_webhook_signature(fields: dict[str, object], secret_key: str):
+    def _compute_webhook_signature(fields: dict[str, Any], secret_key: str):
         """
         Params:
             fields: Поля, что используются для генерации сигнатуры со значениями.
@@ -171,6 +172,7 @@ class AccountService:
                 await self._change_account_balance(account.id, data.amount)
                 return True
         except IntegrityError:
+            # TODO: проверить что ошибка была вызвана нарушением transaction_id unique
             # будет вызвано при попытке создания дубликата т.к transaction_id должно
             # быть уникально, т.е это блок обработки повторного вызова.
             _logger.info("Attempt to apply already applied payment. Attempt ignored.")
