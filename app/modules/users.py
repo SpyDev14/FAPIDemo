@@ -90,7 +90,6 @@ class UserRead(BaseModel):
     id: int
     email: EmailStr
     full_name: str
-    is_active: bool
 
 class UserUpdate(BaseModel):
     full_name: str | None = Field(default=None, max_length=length_of(User.full_name))
@@ -102,6 +101,8 @@ class UserCreate(BaseModel):
     # Максимум нужен для предотвращения DoS атак на создание пользователя (тут такого
     # эндпоинта в публичном доступе пока нет, но всё же лучше сразу указать)
     password: str = Field(min_length=8, max_length=64)
+
+# TODO: разбить на отдельные файлы, чтобы не было CI и можно было определить Admin схемы тут
 
 ### MARK: Services
 class UserService:
