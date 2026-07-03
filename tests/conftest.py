@@ -16,25 +16,23 @@ from app.main import app
 init_modules()
 
 @pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
-
-@pytest.fixture(scope="session")
-async def db_engine():
-    """Создаёт тестовую БД в контейнере и создаёт все таблицы."""
+def db_url():
     with PostgresContainer("postgres:18") as postgres:
-        url = postgres.get_connection_url(driver="asyncpg")
-        engine = create_async_engine(url, echo=False)
+        yield postgres.get_connection_url(driver="asyncpg")
 
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+# Создаётся под каждый тест, иначе придётся делать все тесты
+# выполняемыми в одном event_loop
+@pytest_asyncio.fixture
+async def db_engine(db_url: str):
+    engine = create_async_engine(db_url, echo=False)
 
-        yield engine
-        await engine.dispose()
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
-@pytest_asyncio.fixture(loop_scope="function")
+    yield engine
+    await engine.dispose()
+
+@pytest_asyncio.fixture
 async def db_session(db_engine: AsyncEngine):
     """
     Возвращает сессию, обёрнутую во внешнюю транзакцию.
@@ -52,7 +50,7 @@ async def db_session(db_engine: AsyncEngine):
             yield session
             await connection.rollback()
 
-@pytest_asyncio.fixture(loop_scope="function")
+@pytest_asyncio.fixture
 async def client(db_session: AsyncSession):
     """HTTP-клиент с переопределённой зависимостью БД."""
     app.dependency_overrides[get_db] = lambda: db_session
@@ -69,7 +67,7 @@ class TestUsers:
     admin: User
     user: User
 
-@pytest_asyncio.fixture(loop_scope="function")
+@pytest_asyncio.fixture
 async def test_users(db_session: AsyncSession) -> TestUsers:
     """Создаёт тестового пользователя и администратора в БД."""
     admin = User(
@@ -87,7 +85,7 @@ async def test_users(db_session: AsyncSession) -> TestUsers:
         is_active=True,
     )
     db_session.add_all([admin, user])
-    await db_session.commit()
+    await db_session.flush()
     await db_session.refresh(admin)
     await db_session.refresh(user)
 
