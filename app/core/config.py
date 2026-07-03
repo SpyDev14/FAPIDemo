@@ -11,7 +11,7 @@ from app.utils.logging import filters
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 class Settings(BaseSettings):
     DEBUG: bool = False # should be under SK because SK validation depends on DEBUG value
-    SECRET_KEY: str = 'SECRET_KEY'
+    SECRET_KEY: str = 'SECRET_KEY SECRET_KEY SECRET_KEY SECRET_KEY'
 
     ### [Database] ###
     DB_USER: str
