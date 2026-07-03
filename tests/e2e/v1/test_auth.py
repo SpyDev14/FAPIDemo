@@ -7,7 +7,6 @@ from app.modules.auth import AuthTokens
 from tests.conftest import TestUsers
 
 
-@pytest.mark.asyncio
 class TestAuth:
     async def test_login_success(self, client: AsyncClient, test_users: TestUsers):
         resp = await client.post("/api/v1/auth/login", json={
