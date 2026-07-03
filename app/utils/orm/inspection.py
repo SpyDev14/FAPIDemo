@@ -28,19 +28,3 @@ def length_of(attr: InstrumentedAttribute) -> int:
     if not (length := getattr(col.type, "length", None)):
         raise TypeError(f"{attr.name} - не строковая колонка")
     return length
-
-def default_of[T](attr: InstrumentedAttribute[T]) -> T:
-    """
-    Возвращает дефолтное значение опреденённое для колонки. \
-
-    Examples:
-        >>> default = default_of(User.is_active) # True, например
-
-    Raises:
-        TypeError: колонка не определяет python значения по умолчанию (default).
-    """
-    col = _get_column(attr)
-    if col.default is None:
-        raise TypeError("This attr not define default value")
-
-    raise NotImplementedError

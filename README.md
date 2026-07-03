@@ -118,8 +118,8 @@
   "transaction_id": "5eae174f-7cd0-472c-bd36-35660f00132b",
   "user_id": 1,
   "account_id": 1,
-  "amount": 100,
-  "signature": "7b47e41efe564a062029da3367bde8844bea0fb049f894687cee5d57f2858bc8"
+  "amount": "100.00",
+  "signature": "1a8de2bb47c39c0b82816bd0dba196b4ba1a34743b4a2b5cd8b7b62623aa1515"
 }
 ```
 

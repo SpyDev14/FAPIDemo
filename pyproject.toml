@@ -20,8 +20,10 @@ dev = [
     "httpx>=0.28.1",
     "psycopg2-binary>=2.9.12",
     "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
     "pytest-cov>=7.1.0",
     "ruff>=0.15.20",
+    "testcontainers[postgres]>=4.0",
 ]
 prod = [
     "psycopg2>=2.9.12",
@@ -30,3 +32,9 @@ prod = [
 ### uv ###
 [tool.uv]
 default-groups = ["dev"] # Use --no-default-groups in prod scripts
+
+### Pytest ###
+[tool.pytest.ini_options]
+minversion = "9.1.1"
+asyncio_mode = "auto"
+testpaths = ["tests"]

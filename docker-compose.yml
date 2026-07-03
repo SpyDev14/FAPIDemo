@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:18
+    image: postgres:18 # 18 версия указана в тестах (tests\conftest.py)
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASS}

@@ -152,7 +152,7 @@ class AccountService:
 
         Raises:
             Http404: Пользователь не найден
-            HTTPException: Сигнатура сфальсифицирована
+            HTTPException: Сигнатура сфальсифицирована, 403 код
         """
 
         if not self._verify_webhook_signature(data):
