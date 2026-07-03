@@ -1,1 +1,2 @@
--
+- Доделать тесты: https://chat.deepseek.com/a/chat/s/6d6f583f-9aaa-48c5-a325-70231ad342de
+- Добавить FSP к API
