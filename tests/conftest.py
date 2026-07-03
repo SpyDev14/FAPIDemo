@@ -1,25 +1,31 @@
-from httpx import AsyncClient, ASGITransport
+from dataclasses import dataclass
+import asyncio
+
 from testcontainers.postgres import PostgresContainer
-from sqlalchemy.ext.asyncio import (
-    AsyncEngine,
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
+from httpx import AsyncClient, ASGITransport
 import pytest, pytest_asyncio
 
+from app.modules.users import User
 from app.modules import init_modules
-from app.main import app
 from app.core.database import Base, get_db
+from app.core.security import hash_password
+from app.main import app
 
 
 init_modules()
 
 @pytest.fixture(scope="session")
+def event_loop():
+    loop = asyncio.new_event_loop()
+    yield loop
+    loop.close()
+
+@pytest.fixture(scope="session")
 async def db_engine():
     """Создаёт тестовую БД в контейнере и создаёт все таблицы."""
     with PostgresContainer("postgres:18") as postgres:
-        url = postgres.get_connection_url("asyncpg")
+        url = postgres.get_connection_url(driver="asyncpg")
         engine = create_async_engine(url, echo=False)
 
         async with engine.begin() as conn:
@@ -32,14 +38,10 @@ async def db_engine():
 async def db_session(db_engine: AsyncEngine):
     """
     Возвращает сессию, обёрнутую во внешнюю транзакцию.
-    Все изменения, сделанные внутри теста (включая вложенные begin/commit),
-    будут откатаны после завершения теста.
+    Все изменения откатываются после теста.
     """
-    # Устанавливаем соединение и начинаем внешнюю транзакцию
     async with db_engine.connect() as connection:
-        await connection.begin()  # <-- внешняя транзакция
-
-        # Создаём сессию, привязанную к этому соединению
+        await connection.begin()
         async_session = async_sessionmaker(
             bind=connection,
             expire_on_commit=False,
@@ -48,16 +50,45 @@ async def db_session(db_engine: AsyncEngine):
         )
         async with async_session() as session:
             yield session
-            # После выхода из теста откатываем внешнюю транзакцию
             await connection.rollback()
 
 @pytest_asyncio.fixture(loop_scope="function")
 async def client(db_session: AsyncSession):
+    """HTTP-клиент с переопределённой зависимостью БД."""
     app.dependency_overrides[get_db] = lambda: db_session
-
     async with AsyncClient(
         transport=ASGITransport(app),
         base_url="http://test"
-    ) as client: yield client
-
+    ) as client:
+        yield client
     app.dependency_overrides.clear()
+
+
+@dataclass
+class TestUsers:
+    admin: User
+    user: User
+
+@pytest_asyncio.fixture(loop_scope="function")
+async def test_users(db_session: AsyncSession) -> TestUsers:
+    """Создаёт тестового пользователя и администратора в БД."""
+    admin = User(
+        email="admin@test.com",
+        hashed_password=hash_password("adminpass"),
+        full_name="Admin Test",
+        role=User.Role.ADMIN,
+        is_active=True,
+    )
+    user = User(
+        email="user@test.com",
+        hashed_password=hash_password("userpass"),
+        full_name="User Test",
+        role=User.Role.USER,
+        is_active=True,
+    )
+    db_session.add_all([admin, user])
+    await db_session.commit()
+    await db_session.refresh(admin)
+    await db_session.refresh(user)
+
+    return TestUsers(admin, user)

@@ -53,7 +53,8 @@ class User(Base):
     # property) or something other for it (some new way), but
     # NOT through `.role` directly!
     # NOTE: без указания обычного default поле будет None до commit, поэтому везде нужно указывать оба
-    role: Mapped[Role] = mapped_column(Enum(Role), server_default=text(Role.USER), default=Role.USER)
+    # TODO: вроде нет, потому надо убрать нафиг.
+    role: Mapped[Role] = mapped_column(Enum(Role), server_default=text("'USER'::role"), default=Role.USER)
 
     accounts: Mapped[list['Account']] = relationship(
         'Account', back_populates='user', cascade=ALL_AND_DELETE_ORPHAN

@@ -26,7 +26,6 @@ class TestAccountService:
     def test_compute_signature(self):
         secret = "_secret_"
         fields = {"b": 20, "a": "1"}
-        # сортировка ключей: a=1, b=2 -> "12secret"
         sig = AccountService._compute_webhook_signature(fields, secret)
         expected = hashlib.sha256(b"120_secret_").hexdigest()
         assert sig == expected
@@ -46,5 +45,4 @@ class TestAccountService:
         data = _get_test_payment_webhook_data("bad")
         with pytest.raises(HTTPException) as exc_info:
             await self.service.try_process_payment(data)
-        # Является частью публичного контракта API, потому проверяем
-        assert exc_info.value.status_code == 403, "is not forbidden"
+        assert exc_info.value.status_code == 403
