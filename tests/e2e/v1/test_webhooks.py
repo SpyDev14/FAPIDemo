@@ -13,7 +13,7 @@ from tests.e2e.v1._utils import get_admin_token, auth_headers
 
 
 class TestWebhook:
-    async def test_webhook_success(self, client: AsyncClient, test_users: TestUsers, db_session: AsyncSession):
+    async def test_webhook_success(self, client: AsyncClient, test_users: TestUsers):
         user = test_users.user
         external_id = 100
         transaction_id = str(uuid4())
@@ -55,7 +55,7 @@ class TestWebhook:
         assert len(payments) == 1
         assert Decimal(payments[0]["amount"]) == Decimal(amount)
 
-    async def test_webhook_duplicate(self, client: AsyncClient, test_users):
+    async def test_webhook_duplicate(self, client: AsyncClient, test_users: TestUsers, db_session: AsyncSession):
         user = test_users.user
         external_id = 200
         transaction_id = str(uuid4())
@@ -87,7 +87,7 @@ class TestWebhook:
         assert account_resp.status_code == 200
         assert Decimal(account_resp.json()["balance"]) == Decimal(amount)
 
-    async def test_webhook_invalid_signature(self, client: AsyncClient, test_users):
+    async def test_webhook_invalid_signature(self, client: AsyncClient, test_users: TestUsers):
         user = test_users.user
         external_id = 300
         transaction_id = str(uuid4())
@@ -131,7 +131,7 @@ class TestWebhook:
             hashed_password=hash_password("password12345"),
             full_name="User Two",
             is_active=True,
-            is_admin=False,
+            role=User.Role.USER,
         )
         db_session.add(user2)
         await db_session.commit()
@@ -160,7 +160,7 @@ class TestWebhook:
         assert resp.status_code == 400
         assert "not belong" in resp.text
 
-    async def test_webhook_creates_account_if_not_exists(self, client: AsyncClient, test_users):
+    async def test_webhook_creates_account_if_not_exists(self, client: AsyncClient, test_users: TestUsers):
         user = test_users.user
         external_id = 600
         transaction_id = str(uuid4())
